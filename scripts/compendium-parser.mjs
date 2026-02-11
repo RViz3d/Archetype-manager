@@ -139,7 +139,8 @@ export class CompendiumParser {
   static normalizeName(name) {
     if (!name) return '';
     return name
-      .replace(/\s*\(.*?\)\s*/g, '')           // Remove parentheticals
+      .replace(/\s*\(.*?\)\s*/g, ' ')           // Remove parentheticals (replace with space to preserve word boundaries)
+      .replace(/\s+/g, ' ')                      // Collapse multiple spaces into one
       .replace(/\s+\d+\s*$/g, '')               // Remove trailing numbers (1, 2, etc.)
       .replace(/\s+(I{1,4}|IV|V|VI{0,3})\s*$/g, '') // Remove Roman numerals
       .trim()
