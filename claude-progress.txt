@@ -1501,6 +1501,55 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
 
 **Current Status:** 79/100 features passing (79.0%)
 
+### Session (2025-02-11) - Features #81, #82
+
+**Accomplished:**
+- Feature #81 (Confirmation dialog before apply operation): PASSED
+  - showPreviewDialog opens with Apply and Back buttons
+  - showPreviewConfirmFlow opens confirmation after Apply in preview
+  - Confirmation dialog has Confirm and Cancel buttons
+  - Confirmation content includes archetype name, class name, mentions backup and feature modifications
+  - Cancel → returns to preview, no application, no flags, no chat messages
+  - Confirm → returns "applied", Applicator.apply succeeds with backup, flags, chat message
+  - Confirmation is not skippable: flow waits for user input before resolving
+  - Default button is cancel (safety)
+  - Close via X returns false
+  - Back navigation and cancel-retry cycles work correctly
+  - Multiple cancel-retry cycles produce no data changes
+  - Different class types (Rogue) work correctly
+  - 33/33 tests passing (test/test-feature-81.mjs)
+
+- Feature #82 (Confirmation dialog before remove operation): PASSED
+  - Added showRemoveConfirmation method to UIManager
+  - Method wraps showConfirmation + Applicator.remove flow
+  - Confirmation dialog appears with "Remove Archetype" title
+  - Confirm and Cancel buttons present, default is cancel (safety)
+  - Confirmation content includes archetype display name (slug → title case)
+  - Confirmation content includes class name, mentions restoring from backup
+  - Cancel → archetype remains applied, no removal, no chat message, no notification
+  - Close via X → same as cancel, no removal
+  - Confirm → Applicator.remove called, flags cleared, classAssociations restored, chat message posted
+  - Different slugs display correct names (weapon-master → Weapon Master)
+  - Works with different class types (Rogue)
+  - Edge cases: non-existent archetype returns false, multi-archetype selective removal works
+  - 25/25 tests passing (test/test-feature-82.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs: Added showRemoveConfirmation static method
+  - Shows confirmation dialog with archetype display name and class name
+  - Mentions restoring from backup in content
+  - Calls Applicator.remove if confirmed, returns false if cancelled
+- test/test-feature-81.mjs: New test suite (33 tests) - Confirmation dialog before apply
+- test/test-feature-82.mjs: New test suite (25 tests) - Confirmation dialog before remove
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #43: 40/40, Feature #61: 42/42
+  - Feature #69: 109/109, Feature #81: 33/33
+
+**Current Status:** 85/100 features passing (85.0%)
+
 ### Session (2025-02-11) - Features #78, #79, #80
 
 **Accomplished:**
