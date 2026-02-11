@@ -548,3 +548,122 @@
 (Features #1-11, #13-14, #16-17, #21-28, #48-50, #62, #75, #89)
 
 **All tests passing:** 691 total tests across all test suites (zero regressions)
+
+### Session 10 (2025-02-11)
+
+**Accomplished:**
+- Feature #18 (Matching engine links parsed text to classAssociations): PASSED
+  - Implemented 3-pass matching strategy in matchTarget():
+    - Pass 1: Exact case-insensitive match (preserves tier numbers like "Armor Training 2")
+    - Pass 2: Normalized match (strips tiers/parentheticals for fuzzy matching)
+    - Pass 3: Partial/substring match for broader resolution
+  - Added guards for null/empty targets and null resolvedNames
+  - Fixed bug where empty string matched everything via partial matching
+  - Tested with full Two-Handed Fighter archetype (7 features, all matched correctly)
+  - Tested unmatched features flagged with needsUserInput=true
+  - Tested with Rogue classAssociations (multi-class verification)
+  - 48/48 tests passing (test/test-feature-18.mjs)
+
+- Feature #29 (Detect feature conflicts between two archetypes): PASSED
+  - Verified DiffEngine.detectConflicts finds Bravery conflict between two archetypes
+  - Verified conflict object has correct structure (featureName, archetypeA/B, featureA/B)
+  - Verified non-conflicting archetypes produce no false positives
+  - Verified replace-vs-modify on same feature detected as conflict
+  - Verified symmetry (A-B and B-A detect same conflicts)
+  - Verified multi-archetype stack validation (3+ archetypes)
+  - Verified ConflictChecker.checkAgainstApplied with multiple applied archetypes
+  - 26/26 tests passing (test/test-feature-29.mjs)
+
+- Feature #33 (Generate diff between base and archetype classAssociations): PASSED
+  - Fixed critical bug in DiffEngine.generateDiff: undefined===undefined false match
+    - When a.id and matchedAssociation.id are both undefined, findIndex matched index 0
+    - Fixed by guarding: (matchUuid && a.uuid === matchUuid) || (matchId && a.id === matchId)
+  - Verified all 6 replaced features (Bravery, AT1-4, Armor Mastery) marked as REMOVED
+  - Verified all 7 archetype features (6 replacements + 1 additive) marked as ADDED
+  - Verified all 6 unchanged features (Bonus Feat, WT1-4, Weapon Mastery) preserved
+  - Verified diff structure: every entry has status, level, name
+  - Verified diff sorted by level
+  - Verified modification type shows MODIFIED status
+  - Verified empty/additive-only edge cases
+  - 43/43 tests passing (test/test-feature-33.mjs)
+
+**Code Changes:**
+- scripts/compendium-parser.mjs: Improved matchTarget() with 3-pass strategy
+  - Added null/empty guards
+  - Pass 1: exact case-insensitive (preserves tier numbers)
+  - Pass 2: normalized match (strips tiers)
+  - Pass 3: partial/substring match
+- scripts/diff-engine.mjs: Fixed generateDiff undefined===undefined bug
+  - Guards matchUuid and matchId against undefined before comparison
+- test/test-feature-18.mjs: New test suite (48 tests)
+- test/test-feature-29.mjs: New test suite (26 tests)
+- test/test-feature-33.mjs: New test suite (43 tests)
+
+**Current Status:** 36/100 features passing
+(Features #1-11, #13-14, #16-18, #21-29, #33, #48-50, #62, #75, #89)
+
+**All tests passing:** 808 total tests across all test suites (zero regressions)
+
+### Session 12 (2025-02-11)
+
+**Accomplished:**
+- Feature #34 (Preview dialog displays diff with status icons): PASSED
+  - Open preview dialog - dialog created with correct title
+  - Removed entries: red (#c00) with fa-times (X) icon
+  - Added entries: blue (#08f) with fa-plus (+) icon
+  - Modified entries: orange (#f80) with fa-pen (~) icon
+  - Unchanged entries: green (#080) with fa-check (checkmark) icon
+  - All 10 entries show correct name and level
+  - Clear before/after views with status labels (Removed, Added, Modified, Unchanged)
+  - Table structure with Status, Level, Feature, Action columns
+  - Empty/null diff handled gracefully ("No changes detected")
+  - Tooltip labels correct on status icons
+  - Apply and Back buttons work correctly
+  - Row CSS classes correspond to status types
+  - Diff entries sorted by level (ascending)
+  - 16/16 tests passing
+
+- Feature #35 (Editable level fields in preview dialog): PASSED
+  - Added entries have editable level input fields (type=number)
+  - Modified entries have editable level input fields
+  - Unchanged entries do NOT have editable fields (read-only)
+  - Removed entries do NOT have editable fields (read-only)
+  - Level inputs have correct initial values from diff
+  - Changing level value (e.g., 2 → 4) updates the diff array
+  - Level inputs have min="1" and max="20" attributes
+  - Non-numeric values rejected (NaN check prevents corruption)
+  - data-index attributes correctly map to diff array indices
+  - Multiple level changes all update correctly
+  - 10/10 tests passing
+
+- Feature #36 (Feature info button shows description): PASSED
+  - Info buttons present on added/modified rows (archetype features)
+  - Clicking info on compendium feature shows description dialog
+  - Clicking info on JE feature shows JE description
+  - Clicking info on additive feature shows description
+  - Info popup is dismissable (close via OK button)
+  - Info button click does NOT close preview dialog (stopPropagation)
+  - Unchanged/removed rows do NOT have info buttons
+  - Info dialog shows feature name, source label, level, type, and full description
+  - 7/7 tests passing (+ 2 from structure verification)
+
+**Code Changes:**
+- scripts/ui-manager.mjs: Added info buttons and click handlers to preview dialog
+  - _buildPreviewHTML: Added info-btn buttons on added/modified rows
+  - showPreviewDialog render: Added info button click handlers that open description dialogs
+  - Info dialog shows feature name, source, level, type, and description
+- test/test-features-34-35-36.mjs: New comprehensive test suite - 94/94 passing
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions)
+  - Feature #71: 54/54 passing
+  - Feature #70: 58/58 passing
+  - Feature #33: 43/43 passing
+  - Feature #6: all passing
+  - Feature #25: 59/59 passing
+
+**Current Status:** 42/100 features passing
+(Features #1-11, #13-14, #16-18, #21-29, #30, #33-36, #48-50, #62, #75, #89, and others)
+
+**All tests passing:** 94 new + existing suites, zero regressions
