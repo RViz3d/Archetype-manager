@@ -1116,3 +1116,53 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #37: 38/38, Feature #38: 44/44, Feature #43: 40/40
 
 **Current Status:** 59/100 features passing (59.0%)
+
+### Session (2025-02-11) - Features #56, #57, #58
+
+**Accomplished:**
+- Feature #56 (No token selected shows warning): PASSED
+  - Warning notification appears when no token selected
+  - Message clearly states "select a token first"
+  - Warning includes module title identifier
+  - No dialog opens, no error notification, no console errors
+  - Repeated calls each show warning
+  - Valid token: no warning shown
+  - Null actor: appropriate "no actor" warning
+  - Only first controlled token used
+  - 10/10 tests passing
+
+- Feature #57 (No classes on actor shows warning): PASSED
+  - Warning notification when actor has zero class items
+  - Message explains actor needs a class ("no class items")
+  - No dialog opens for classless actor
+  - Actor with only non-class items (weapons, feats) triggers warning
+  - Actor with class items does NOT show warning
+  - Multi-class actors do NOT show warning
+  - Warning includes module identifier
+  - Permission check happens before class check (non-owner gets permission warning)
+  - 10/10 tests passing
+
+- Feature #58 (Module works without pf1e-archetypes - JE-only mode): PASSED
+  - isModuleAvailable returns false when module not installed or inactive
+  - loadArchetypeList and loadArchetypeFeatures return empty arrays
+  - No error notifications when module absent
+  - JournalEntry DB fully functional (fixes, missing, custom sections)
+  - getArchetype priority chain works in JE-only mode
+  - Custom archetypes persist across module enable/disable cycle
+  - Console log indicates JE-only mode
+  - Missing compendium pack handled gracefully with error notification
+  - Re-enabling module restores normal compendium loading
+  - 16/16 tests passing
+
+**Code Changes:**
+- test/test-features-56-57-58.mjs: New test suite (36 tests)
+  - 10 tests for Feature #56 (no token warning)
+  - 10 tests for Feature #57 (no classes warning)
+  - 16 tests for Feature #58 (JE-only mode)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Features #1-3: 26/26, Feature #6: 108/108, Feature #33: 43/43
+
+**Current Status:** 64/100 features passing (64.0%)
