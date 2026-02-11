@@ -1,0 +1,39 @@
+## Progress Notes - PF1e Archetype Manager
+
+### Session 1 (2025-02-11)
+
+**Accomplished:**
+- Feature #4 (No mock data patterns in codebase): PASSED
+  - Grepped for all mock data patterns: mockData, fakeData, sampleData, dummyData → CLEAN
+  - Grepped for TODO.*real, TODO.*database, STUB, MOCK → CLEAN
+  - Grepped for globalThis → CLEAN
+  - Grepped for dev-store, devStore, mock-db, mockDb → CLEAN
+  - Grepped for new Map()/new Set() → Found 2 hits in diff-engine.mjs
+    - Both are temporary computation variables within single function calls (not persistent stores)
+    - Investigated and confirmed legitimate algorithmic use
+
+- Feature #5 (All FoundryVTT API calls use real Document API): PASSED
+  - Verified JournalEntry ops use game.journal.getName() and page.update()
+  - Verified flag ops use setFlag(), getFlag(), unsetFlag()
+  - Verified class association updates use classItem.update()
+  - Verified embedded doc ops use createEmbeddedDocuments/deleteEmbeddedDocuments
+  - Verified no hardcoded static data returns (all empty returns are valid fallbacks)
+  - Verified zero setTimeout or setInterval calls
+  - All API calls use real FoundryVTT Document API
+
+**Current Status:** 2/100 features passing (Features #4, #5)
+
+**Notes:**
+- ui-manager.mjs has TODO/Placeholder comments for unimplemented dialog features
+  (these are expected — future features will implement them)
+- applicator.mjs has a TODO for rebuilding classAssociations on selective removal
+- The codebase is clean and uses proper FoundryVTT APIs throughout
+- Module structure is well-organized with clear separation of concerns:
+  - module.mjs: Entry point, hooks, settings
+  - archetype-manager.mjs: Main controller
+  - journal-db.mjs: JournalEntry database CRUD
+  - compendium-parser.mjs: Compendium parsing and feature classification
+  - diff-engine.mjs: Diff generation and conflict detection
+  - applicator.mjs: Apply/remove archetypes with backup/rollback
+  - conflict-checker.mjs: Compatibility validation
+  - ui-manager.mjs: Dialog UI management (partially implemented)
