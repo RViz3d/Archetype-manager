@@ -839,3 +839,71 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
 
 **Current Status:** 49/100 features passing (49.0%)
 (Features #1-19, #21-29, #30-31, #33-38, #43, #48-50, #55, #62, #68, #70-71, #75, #89)
+
+### Session (2025-02-11) - Features #51, #52, #53
+
+**Accomplished:**
+- Feature #51 (Already-applied archetypes shown with visual indicator): PASSED
+  - Applied archetype item has .applied CSS class ✓
+  - Applied archetype has fa-check-circle icon ✓
+  - Status icon has title="Applied" for accessibility ✓
+  - Non-applied archetypes do NOT have the indicator ✓
+  - Multiple applied archetypes all show indicators ✓
+  - Indicator is not color-only (icon + title text for accessibility) ✓
+  - Applied section at bottom shows applied archetype names ✓
+  - No applied archetypes shows "None" ✓
+  - Applied items are not selectable (click does nothing) ✓
+  - CSS class "status-unchanged" present on icon span ✓
+  - 10/10 tests passing
+
+- Feature #52 (Conflict indicator per archetype in list): PASSED
+  - data-has-conflict attribute on every archetype item ✓
+  - Non-conflicting archetypes have data-has-conflict="false" ✓
+  - Conflict warning uses fa-exclamation-triangle icon ✓
+  - Non-conflicting items do NOT have conflict-warning element ✓
+  - _buildAppliedArchetypeData returns correct data with parsedData ✓
+  - _buildAppliedArchetypeData returns empty array when no applied ✓
+  - _buildAppliedArchetypeData returns placeholder when parsedData missing ✓
+  - ConflictChecker.checkAgainstApplied correctly detects conflicts ✓
+  - Conflict check only runs for non-applied archetypes with parsedData ✓
+  - ConflictChecker.checkCanApply returns blockedBy info ✓
+  - 10/10 tests passing
+
+- Feature #53 (Info button per archetype shows full description): PASSED
+  - Each archetype item has an info button ✓
+  - Info button uses fa-info-circle icon ✓
+  - Info button data-slug matches archetype slug ✓
+  - Info button has title="Info" for accessibility ✓
+  - Clicking info button shows notification with archetype info ✓
+  - Notification includes archetype name and source ✓
+  - Info button click uses stopPropagation (doesn't toggle selection) ✓
+  - All info buttons are dismissable (auto-dismissing notification) ✓
+  - JE missing entry info shows correct source "missing" ✓
+  - JE custom entry info shows correct source "custom" ✓
+  - 10/10 tests passing
+
+- Cross-feature integration tests (4 additional):
+  - Applied archetype has both applied indicator AND info button
+  - Non-applied has info button but no applied indicator
+  - All three indicators coexist correctly
+  - Applied indicator visible in search results
+
+**Code Changes:**
+- test/test-features-51-52-53.mjs: New test suite (34 tests)
+  - 10 tests for Feature #51 (applied visual indicator)
+  - 10 tests for Feature #52 (conflict indicator)
+  - 10 tests for Feature #53 (info button description)
+  - 4 cross-feature integration tests
+
+**Verification:**
+- No production code changes needed (all functionality already implemented)
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Features #49,#50,#89: 30/30 passing
+  - Feature #6: 108/108 passing
+  - Features #34,#35,#36: 94/94 passing
+  - Feature #30: 36/36 passing
+  - Feature #55: 36/36 passing
+
+**Current Status:** 52/100 features passing (52.0%)
+(Features #1-19, #21-29, #30-31, #33-38, #43, #48-53, #55, #62, #68, #70-71, #75, #89)
