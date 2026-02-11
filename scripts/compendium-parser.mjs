@@ -282,4 +282,84 @@ export class CompendiumParser {
 
     return parsed;
   }
+
+  /**
+   * Parse an archetype and prompt user for any unparseable features
+   *
+   * After auto-parsing, iterates over features flagged with needsUserInput=true.
+   * For each, triggers a user prompt dialog (via the provided callback) to ask
+   * the user to specify what the feature replaces (or mark it as additive).
+   * If the user provides a fix, updates the feature data and saves to JE fixes.
+   * If the user cancels, the feature remains flagged as needsUserInput.
+   *
+   * @param {object} archetype - The archetype document
+   * @param {Array} features - The archetype's features
+   * @param {Array} baseAssociations - The base class classAssociations
+   * @param {object} options - Options
+   * @param {Function} options.promptCallback - Async function(feature, baseFeatures) => user result or null
+   *   Called for each feature that needs user input. Receives the feature data and
+   *   a list of base class features (name, level, uuid). Should return an object
+   *   with { level, replaces, isAdditive } or null if cancelled.
+   * @param {string} options.className - The class name (for JE fix entry)
+   * @returns {object} Parsed archetype data with all features resolved where possible
+   */
+  static async parseArchetypeWithPrompts(archetype, features, baseAssociations, options = {}) {
+    const parsed = await this.parseArchetype(archetype, features, baseAssociations);
+    const { promptCallback, className } = options;
+
+    if (!promptCallback) return parsed;
+
+    // Build base features list for dropdown (from resolved associations)
+    const resolvedAssociations = await this.resolveAssociations(baseAssociations);
+    const baseFeatures = resolvedAssociations
+      .filter(a => a.resolvedName)
+      .map(a => ({
+        name: a.resolvedName,
+        level: a.level,
+        uuid: a.uuid || a.id
+      }));
+
+    // Iterate over features needing user input
+    for (let i = 0; i < parsed.features.length; i++) {
+      const feature = parsed.features[i];
+      if (!feature.needsUserInput) continue;
+
+      // Build prompt data
+      const promptFeature = {
+        name: feature.name,
+        description: feature.description || '',
+        level: feature.level,
+        archetypeSlug: parsed.slug,
+        archetypeName: parsed.name,
+        className: className || ''
+      };
+
+      // Call the prompt callback (e.g., UIManager.showFixDialog)
+      const result = await promptCallback(promptFeature, baseFeatures);
+
+      if (result) {
+        // User provided a fix - update the feature
+        parsed.features[i] = {
+          ...feature,
+          level: result.level ?? feature.level,
+          type: result.isAdditive ? 'additive' : 'replacement',
+          target: result.replaces || null,
+          needsUserInput: false,
+          source: 'user-fix',
+          userFixApplied: true
+        };
+
+        // If the user selected a replacement, try to match it
+        if (result.replaces && !result.isAdditive) {
+          const matched = this.matchTarget(result.replaces, resolvedAssociations);
+          if (matched) {
+            parsed.features[i].matchedAssociation = matched;
+          }
+        }
+      }
+      // If result is null (cancelled), feature stays as needsUserInput=true
+    }
+
+    return parsed;
+  }
 }
