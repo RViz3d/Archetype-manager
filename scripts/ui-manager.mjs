@@ -73,10 +73,69 @@ export class UIManager {
       </div>
     `;
 
+    // Store selectedArchetypes at dialog scope for button access
+    let dialogSelectedArchetypes = new Set();
+    let dialogArchetypeData = [];
+    let dialogCurrentClassItem = null;
+    let dialogAppliedArchetypeDataList = [];
+
     const dialogInstance = new Dialog({
       title: `${MODULE_TITLE} - ${actor.name}`,
       content,
       buttons: {
+        applySelected: {
+          icon: '<i class="fas fa-check-double"></i>',
+          label: 'Apply Selected',
+          callback: async () => {
+            if (dialogSelectedArchetypes.size === 0) {
+              ui.notifications.warn(`${MODULE_TITLE} | No archetypes selected. Click on archetypes to select them first.`);
+              return;
+            }
+
+            // Build combined parsed data for selected archetypes
+            const selectedParsedList = [...dialogSelectedArchetypes].map(slug => {
+              const arch = dialogArchetypeData.find(a => a.slug === slug);
+              return arch?.parsedData || { name: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), slug, features: [] };
+            });
+
+            // Final stacking validation including applied
+            const fullStack = [...dialogAppliedArchetypeDataList, ...selectedParsedList];
+            const validation = ConflictChecker.validateStacking(fullStack);
+            if (!validation.valid) {
+              const conflictMsg = validation.conflicts.map(c => c.featureName).join(', ');
+              ui.notifications.error(`${MODULE_TITLE} | Cannot apply: conflicts detected over ${conflictMsg}`);
+              return;
+            }
+
+            // Generate combined diff preview
+            const selectedNames = selectedParsedList.map(a => a.name).join(' + ');
+            const combinedParsed = {
+              name: selectedNames,
+              slug: [...dialogSelectedArchetypes].join('+'),
+              features: selectedParsedList.flatMap(a => a.features || [])
+            };
+
+            // Build combined diff from base associations
+            const baseAssociations = dialogCurrentClassItem?.system?.links?.classAssociations || [];
+            const combinedDiff = DiffEngine.generateDiff(baseAssociations, combinedParsed);
+
+            // Show preview
+            const result = await this.showPreviewConfirmFlow(
+              actor, dialogCurrentClassItem, combinedParsed, combinedDiff
+            );
+
+            if (result === 'applied') {
+              // Apply each archetype sequentially
+              for (const parsed of selectedParsedList) {
+                const diff = DiffEngine.generateDiff(
+                  dialogCurrentClassItem?.system?.links?.classAssociations || [],
+                  parsed
+                );
+                await Applicator.apply(actor, dialogCurrentClassItem, parsed, diff);
+              }
+            }
+          }
+        },
         addCustom: {
           icon: '<i class="fas fa-plus"></i>',
           label: 'Add Archetype',
@@ -99,11 +158,20 @@ export class UIManager {
         const appliedListEl = element.querySelector('.applied-list');
         const loadingIndicator = element.querySelector('.loading-indicator');
 
-        // State
+        // State - local variables synced to dialog scope for button callback access
         let archetypeData = [];
         let currentClassItem = null;
-        let appliedArchetypeDataList = []; // Parsed data for already-applied archetypes
-        let selectedArchetypes = new Set(); // Slugs of selected archetypes for stacking
+        let appliedArchetypeDataList = [];
+        let selectedArchetypes = dialogSelectedArchetypes;
+
+        // Sync function: call after modifying local state
+        const syncToDialogScope = () => {
+          dialogArchetypeData.length = 0;
+          dialogArchetypeData.push(...archetypeData);
+          dialogCurrentClassItem = currentClassItem;
+          dialogAppliedArchetypeDataList.length = 0;
+          dialogAppliedArchetypeDataList.push(...appliedArchetypeDataList);
+        };
 
         /**
          * Load archetypes for the selected class
@@ -187,6 +255,9 @@ export class UIManager {
 
           // Clear selections when class changes
           selectedArchetypes.clear();
+
+          // Sync state to dialog scope for button callbacks
+          syncToDialogScope();
 
           // Hide loading
           if (loadingIndicator) loadingIndicator.style.display = 'none';
