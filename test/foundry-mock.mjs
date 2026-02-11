@@ -150,11 +150,104 @@ class MockUI {
 }
 
 /**
+ * Create a mock class item (PF1e class)
+ */
+export function createMockClassItem(name, level, tag = null) {
+  const flags = {};
+  const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+  const classTag = tag || name.toLowerCase().replace(/\s+/g, '-');
+
+  return {
+    id,
+    name,
+    type: 'class',
+    system: {
+      level,
+      levels: level,
+      tag: classTag,
+      links: {
+        classAssociations: []
+      }
+    },
+    flags,
+    getFlag(scope, key) {
+      return flags[scope]?.[key] ?? null;
+    },
+    async setFlag(scope, key, value) {
+      if (!flags[scope]) flags[scope] = {};
+      flags[scope][key] = value;
+    },
+    async unsetFlag(scope, key) {
+      if (flags[scope]) delete flags[scope][key];
+    },
+    async update(data) {
+      // Handle dot-notation updates
+      for (const [path, value] of Object.entries(data)) {
+        const parts = path.split('.');
+        let current = this;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) current[parts[i]] = {};
+          current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = value;
+      }
+    }
+  };
+}
+
+/**
+ * Create a mock actor
+ */
+export function createMockActor(name, classItems = []) {
+  const flags = {};
+  const items = [...classItems];
+  const id = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+
+  return {
+    id,
+    name,
+    items: {
+      filter: (fn) => items.filter(fn),
+      find: (fn) => items.find(fn),
+      get: (id) => items.find(i => i.id === id),
+      map: (fn) => items.map(fn),
+      [Symbol.iterator]: () => items[Symbol.iterator]()
+    },
+    flags,
+    getFlag(scope, key) {
+      return flags[scope]?.[key] ?? null;
+    },
+    async setFlag(scope, key, value) {
+      if (!flags[scope]) flags[scope] = {};
+      flags[scope][key] = value;
+    },
+    async unsetFlag(scope, key) {
+      if (flags[scope]) delete flags[scope][key];
+    },
+    async createEmbeddedDocuments(type, data) {
+      return data.map(d => ({ ...d, id: crypto.randomUUID?.() || Math.random().toString(36).slice(2) }));
+    },
+    async deleteEmbeddedDocuments(type, ids) {
+      return ids;
+    }
+  };
+}
+
+/**
  * Set up the global FoundryVTT mock environment
  */
 export function setupMockEnvironment() {
   const hooks = new MockHooks();
   const settings = new MockSettings();
+
+  // FoundryVTT adds slugify to String.prototype
+  if (!String.prototype.slugify) {
+    String.prototype.slugify = function() {
+      return this.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    };
+  }
 
   globalThis.Hooks = hooks;
   globalThis.JournalEntry = MockJournalEntry;
@@ -189,13 +282,37 @@ export function setupMockEnvironment() {
   // fromUuid mock
   globalThis.fromUuid = async (uuid) => null;
 
-  // Dialog mock
-  globalThis.Dialog = class {
-    constructor(data) {
+  // Dialog mock - captures render callback for testing
+  globalThis.Dialog = class MockDialog {
+    constructor(data, options = {}) {
       this.data = data;
+      this.options = options;
     }
     render(force) {
+      // If there's a render callback, fire it with a mock HTML element
+      if (this.data.render && typeof document !== 'undefined') {
+        try {
+          const container = document.createElement('div');
+          container.innerHTML = this.data.content || '';
+          this.data.render(container);
+          this._element = container;
+        } catch (e) {
+          // DOM may not be available in Node, that's ok
+        }
+      }
       return this;
+    }
+    close() {
+      if (this.data.close) this.data.close();
+    }
+  };
+  // Keep track of last dialog for testing
+  globalThis.Dialog._lastInstance = null;
+  const OriginalDialog = globalThis.Dialog;
+  globalThis.Dialog = class extends OriginalDialog {
+    constructor(data, options) {
+      super(data, options);
+      globalThis.Dialog._lastInstance = this;
     }
   };
 

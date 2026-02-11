@@ -25,14 +25,282 @@ export class UIManager {
    * @param {Array} classItems - The actor's class items
    */
   static async showMainDialog(actor, classItems) {
-    // Placeholder - full implementation to be built by coding agents
     const lastClass = game.settings.get(MODULE_ID, 'lastSelectedClass');
 
-    ui.notifications.info(`${MODULE_TITLE} | Opening archetype manager for ${actor.name}`);
+    // Build class dropdown options
+    const classOptions = classItems.map(c => {
+      const level = c.system?.level ?? c.system?.levels ?? '?';
+      const tag = c.system?.tag || c.name.slugify?.() || c.name.toLowerCase().replace(/\s+/g, '-');
+      const isSelected = (lastClass && (lastClass === c.id || lastClass === tag)) ? 'selected' : '';
+      return `<option value="${c.id}" data-tag="${tag}" ${isSelected}>${c.name} (Lv ${level})</option>`;
+    }).join('');
 
-    // TODO: Implement full dialog UI
-    console.log(`${MODULE_ID} | Main dialog would open here for actor:`, actor.name);
-    console.log(`${MODULE_ID} | Class items:`, classItems.map(c => c.name));
+    // If no lastClass selection matched, default to first class
+    const hasSelection = classItems.some(c => {
+      const tag = c.system?.tag || c.name.slugify?.() || c.name.toLowerCase().replace(/\s+/g, '-');
+      return lastClass === c.id || lastClass === tag;
+    });
+
+    const content = `
+      <div class="archetype-manager">
+        <div class="form-group class-selector">
+          <label><i class="fas fa-hat-wizard"></i> Select Class:</label>
+          <select name="class-select" class="class-select">
+            ${classOptions}
+          </select>
+        </div>
+
+        <div class="search-container">
+          <i class="fas fa-search"></i>
+          <input type="text" name="archetype-search" class="archetype-search" placeholder="Search archetypes..." />
+        </div>
+
+        <div class="archetype-list-container">
+          <div class="loading-indicator" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Loading archetypes...</span>
+          </div>
+          <div class="archetype-list">
+            <div class="empty-state">Select a class to view available archetypes</div>
+          </div>
+        </div>
+
+        <div class="applied-archetypes-section" style="margin-top: 8px;">
+          <h4 style="margin: 4px 0;"><i class="fas fa-check-circle" style="color: #080;"></i> Applied Archetypes</h4>
+          <div class="applied-list" style="font-style: italic; color: #666;">None</div>
+        </div>
+      </div>
+    `;
+
+    const dialogInstance = new Dialog({
+      title: `${MODULE_TITLE} - ${actor.name}`,
+      content,
+      buttons: {
+        addCustom: {
+          icon: '<i class="fas fa-plus"></i>',
+          label: 'Add Archetype',
+          callback: async () => {
+            await this.showManualEntryDialog('custom');
+          }
+        },
+        close: {
+          icon: '<i class="fas fa-times"></i>',
+          label: 'Close',
+          callback: () => {}
+        }
+      },
+      default: 'close',
+      render: (html) => {
+        const element = html[0] || html;
+        const classSelect = element.querySelector('.class-select');
+        const searchInput = element.querySelector('.archetype-search');
+        const archetypeListEl = element.querySelector('.archetype-list');
+        const appliedListEl = element.querySelector('.applied-list');
+        const loadingIndicator = element.querySelector('.loading-indicator');
+
+        // State
+        let archetypeData = [];
+        let currentClassItem = null;
+
+        /**
+         * Load archetypes for the selected class
+         */
+        const loadArchetypes = async () => {
+          const selectedId = classSelect.value;
+          currentClassItem = classItems.find(c => c.id === selectedId);
+          if (!currentClassItem) return;
+
+          // Save selection
+          const classTag = currentClassItem.system?.tag || currentClassItem.name.slugify?.() || currentClassItem.name.toLowerCase().replace(/\s+/g, '-');
+          game.settings.set(MODULE_ID, 'lastSelectedClass', selectedId);
+
+          // Show loading
+          if (loadingIndicator) loadingIndicator.style.display = 'flex';
+          archetypeListEl.innerHTML = '';
+
+          try {
+            // Load archetypes from compendium
+            const compendiumArchetypes = await CompendiumParser.loadArchetypeList();
+
+            // Filter by class if possible (archetypes that match current class)
+            const className = currentClassItem.name.toLowerCase();
+            const classTag2 = classTag.toLowerCase();
+
+            // Build combined list: compendium + JE missing + JE custom
+            archetypeData = [];
+
+            // Compendium archetypes (filtered by class)
+            for (const arch of compendiumArchetypes) {
+              // Archetype items in the pf1e-archetypes module may have class info in flags or system
+              const archClass = (arch.system?.class || arch.flags?.['pf1e-archetypes']?.class || '').toLowerCase();
+              // Include if class matches, or if we can't determine class (show all)
+              if (!archClass || archClass === className || archClass === classTag2) {
+                archetypeData.push({
+                  name: arch.name,
+                  slug: arch.name.slugify?.() || arch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                  source: 'compendium',
+                  class: archClass
+                });
+              }
+            }
+
+            // JE missing archetypes
+            const missingData = await JournalEntryDB.readSection('missing');
+            for (const [slug, entry] of Object.entries(missingData)) {
+              if ((entry.class || '').toLowerCase() === className ||
+                  (entry.class || '').toLowerCase() === classTag2) {
+                archetypeData.push({
+                  name: entry.name || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  slug,
+                  source: 'missing',
+                  class: entry.class
+                });
+              }
+            }
+
+            // JE custom archetypes
+            const customData = await JournalEntryDB.readSection('custom');
+            for (const [slug, entry] of Object.entries(customData)) {
+              if ((entry.class || '').toLowerCase() === className ||
+                  (entry.class || '').toLowerCase() === classTag2) {
+                archetypeData.push({
+                  name: entry.name || slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  slug,
+                  source: 'custom',
+                  class: entry.class
+                });
+              }
+            }
+
+            // Sort alphabetically
+            archetypeData.sort((a, b) => a.name.localeCompare(b.name));
+
+          } catch (e) {
+            console.error(`${MODULE_ID} | Error loading archetypes:`, e);
+          }
+
+          // Hide loading
+          if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+          // Show applied archetypes
+          updateAppliedList();
+
+          // Render list
+          renderArchetypeList();
+        };
+
+        /**
+         * Update the applied archetypes display
+         */
+        const updateAppliedList = () => {
+          if (!currentClassItem || !appliedListEl) return;
+          const applied = currentClassItem.getFlag?.(MODULE_ID, 'archetypes') || [];
+          if (applied.length === 0) {
+            appliedListEl.innerHTML = '<span style="font-style: italic; color: #666;">None</span>';
+          } else {
+            appliedListEl.innerHTML = applied.map(slug => {
+              const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              return `<span class="applied-archetype-tag" style="display:inline-block; background:rgba(0,128,0,0.1); border:1px solid #080; border-radius:3px; padding:2px 6px; margin:2px; font-size:0.9em;">
+                <i class="fas fa-check" style="color:#080; margin-right:2px;"></i>${displayName}
+              </span>`;
+            }).join('');
+          }
+        };
+
+        /**
+         * Render the archetype list with optional search filter
+         */
+        const renderArchetypeList = () => {
+          const searchTerm = (searchInput?.value || '').toLowerCase().trim();
+          let filtered = archetypeData;
+
+          if (searchTerm) {
+            filtered = archetypeData.filter(a => a.name.toLowerCase().includes(searchTerm));
+          }
+
+          if (filtered.length === 0) {
+            archetypeListEl.innerHTML = `<div class="empty-state">
+              ${searchTerm ? 'No matching archetypes found' : 'No archetypes available for this class'}
+            </div>`;
+            return;
+          }
+
+          // Check applied archetypes
+          const applied = currentClassItem?.getFlag?.(MODULE_ID, 'archetypes') || [];
+
+          archetypeListEl.innerHTML = filtered.map(arch => {
+            const isApplied = applied.includes(arch.slug);
+            const appliedClass = isApplied ? ' applied' : '';
+            const sourceIcon = arch.source === 'compendium' ? 'fa-book' :
+                               arch.source === 'missing' ? 'fa-exclamation-triangle' : 'fa-user';
+            const sourceLabel = arch.source === 'compendium' ? 'From compendium' :
+                                arch.source === 'missing' ? 'Official (added manually)' : 'Custom/Homebrew';
+
+            return `<div class="archetype-item${appliedClass}" data-slug="${arch.slug}" data-source="${arch.source}">
+              <span class="archetype-name">${arch.name}</span>
+              <span class="archetype-indicators">
+                ${isApplied ? '<span class="status-icon status-unchanged" title="Applied"><i class="fas fa-check-circle"></i></span>' : ''}
+                <span class="status-icon" title="${sourceLabel}"><i class="fas ${sourceIcon}"></i></span>
+                <button class="info-btn" data-slug="${arch.slug}" title="Info">
+                  <i class="fas fa-info-circle"></i>
+                </button>
+              </span>
+            </div>`;
+          }).join('');
+
+          // Add click handlers for archetype items
+          archetypeListEl.querySelectorAll('.archetype-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+              // Don't trigger on info button clicks
+              if (e.target.closest('.info-btn')) return;
+
+              // Toggle selection
+              const wasSelected = item.classList.contains('selected');
+              archetypeListEl.querySelectorAll('.archetype-item').forEach(i => i.classList.remove('selected'));
+              if (!wasSelected) {
+                item.classList.add('selected');
+              }
+            });
+          });
+
+          // Add click handlers for info buttons
+          archetypeListEl.querySelectorAll('.info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const slug = btn.dataset.slug;
+              const arch = archetypeData.find(a => a.slug === slug);
+              if (arch) {
+                ui.notifications.info(`${arch.name} (${arch.source})`);
+              }
+            });
+          });
+        };
+
+        // Event listeners
+        if (classSelect) {
+          classSelect.addEventListener('change', () => {
+            loadArchetypes();
+          });
+        }
+
+        if (searchInput) {
+          searchInput.addEventListener('input', () => {
+            renderArchetypeList();
+          });
+        }
+
+        // Initial load for the selected class
+        if (classItems.length > 0) {
+          loadArchetypes();
+        }
+      }
+    }, {
+      width: 500,
+      height: 'auto',
+      classes: ['archetype-manager-dialog']
+    });
+
+    dialogInstance.render(true);
   }
 
   /**
