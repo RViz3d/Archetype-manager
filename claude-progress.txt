@@ -1709,3 +1709,57 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #86: 42/42, Feature #90: 30/30
 
 **Current Status:** 90/100 features passing (90.0%)
+
+### Session (2025-02-11) - Features #86, #87, #88
+
+**Accomplished:**
+- Feature #86 (Status indicators use icons alongside color): PASSED
+  - Removed: fa-times (X) icon + red (#c00)
+  - Added: fa-plus (+) icon + blue (#08f)
+  - Modified: fa-pen (edit) icon + orange (#f80)
+  - Unchanged: fa-check (checkmark) icon + green (#080)
+  - Conflicts: fa-exclamation-triangle icon + yellow (#da0) — distinct from modified orange
+  - All 5 statuses distinguishable without color vision (unique icons)
+  - Labels and title attributes provide text alternatives
+  - 42/42 tests passing (test/test-feature-86.mjs)
+
+- Feature #87 (Tooltips on all interactive elements): PASSED
+  - Conflict warning has tooltip with conflicting feature names
+  - All 4 status icons in preview have title tooltips (Unchanged, Removed, Added, Modified)
+  - Info buttons have "Show description" / "Info" tooltips
+  - Add Feature button has title="Add another feature row"
+  - All FoundryVTT Dialog buttons have icon + label combos
+  - Source type icons, applied tags all have title attributes
+  - Dynamic remove-feature-btn elements have title="Remove"
+  - 32/32 tests passing (test/test-feature-87.mjs)
+
+- Feature #88 (Keyboard-accessible dialog controls): PASSED
+  - Archetype items have tabindex="0", role="option", aria-selected attributes
+  - Archetype list has role="listbox" with aria-label
+  - Enter/Space keydown on archetype items triggers selection
+  - CSS :focus styles with outlines for archetype items and info buttons
+  - All dialogs have close handlers for Escape key
+  - No keyboard traps (no positive tabindex, all buttons focusable)
+  - Form inputs, selects, buttons all natively keyboard-accessible
+  - All dialogs have descriptive titles and default cancel/close buttons
+  - 42/42 tests passing (test/test-feature-88.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs:
+  - Changed conflict warning inline color from #f80 to #da0 (yellow, distinct from modified)
+  - Added title="Add another feature row" to add-feature-btn
+  - Added tabindex="0", role="option", aria-selected to archetype items
+  - Added role="listbox", aria-label to archetype list
+  - Added keydown listener (Enter/Space) for keyboard archetype selection
+- styles/archetype-manager.css:
+  - Changed .conflict-warning color to #da0
+  - Added .archetype-item:focus outline style
+  - Added .info-btn:focus outline style
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #69: 109/109, Feature #54: 54/54
+  - Feature #77: 40/40, Features #34-36: 94/94
+
+**Current Status:** 92/100 features passing (92.0%)
