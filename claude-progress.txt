@@ -415,3 +415,65 @@
 (Features #1-11, #13-14, #16-17, #21-24, #27, #48, #62, #75)
 
 **All tests passing:** 485 total tests across all test suites (zero regressions)
+
+### Session 9 (2025-02-11)
+
+**Accomplished:**
+- Feature #49 (Archetype list filtered by selected class): PASSED
+  - Open main dialog, select Fighter → only Fighter archetypes displayed
+  - Switch to Rogue → list updates to Rogue archetypes
+  - Switch to Wizard → list updates to Wizard archetypes
+  - JE missing entries merged into filtered list (class-matched)
+  - JE custom entries merged into filtered list (class-matched)
+  - JE entries for wrong class NOT shown
+  - Archetypes sorted alphabetically
+  - Each item has data-slug and data-source attributes
+  - Class with no archetypes shows empty state message
+  - 12/12 tests passing
+
+- Feature #50 (Text filter/search on archetype names): PASSED
+  - Typing 'two-handed' filters list to matching entries
+  - Case-insensitive search: 'TWO-HANDED' matches 'Two-Handed Fighter'
+  - Partial match: 'hand' shows Two-Handed Fighter
+  - 'master' shows multiple matching archetypes (Weapon Master, Armor Master, Polearm Master)
+  - No results: 'zzzzzzz' shows empty list with 'No matching archetypes' message
+  - Leading/trailing whitespace trimmed in search
+  - Single character search works
+  - Search also matches JE entries (missing/custom)
+  - Input event listener fires on each keystroke
+  - 9/9 tests passing
+
+- Feature #89 (Empty search returns full list): PASSED
+  - Full list displayed initially (empty search input)
+  - After typing search and clearing, full list restored
+  - Clearing after 'no results' restores full list
+  - Whitespace-only search treated as empty (shows full list)
+  - Multiple search-clear cycles maintain correct list count
+  - 5/5 tests passing
+
+- Cross-feature integration tests (4 additional):
+  - Search + class switch resets properly
+  - Applied archetype shown with check icon
+  - Loading indicator shown and hidden
+  - Info button exists on each archetype item
+
+**Code Changes:**
+- test/foundry-mock.mjs: Added jsdom integration for DOM testing support
+  - Eagerly initializes jsdom when available
+  - Provides document, window, Event, DOMParser globals for Node.js
+  - All existing tests still pass (backward compatible)
+- test/test-features-49-50-89.mjs: New test suite - 30/30 passing
+  - 12 tests for Feature #49 (class filtering)
+  - 9 tests for Feature #50 (text search)
+  - 5 tests for Feature #89 (empty search)
+  - 4 integration tests
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions)
+- jsdom added as dev dependency for DOM testing
+
+**Current Status:** 25/100 features passing
+(Features #1-11, #13-14, #16-17, #21-24, #27, #48-50, #62, #75, #89)
+
+**All tests passing:** 515 total tests across all test suites (zero regressions)
