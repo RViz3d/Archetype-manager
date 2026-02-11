@@ -787,3 +787,55 @@
 
 **Current Status:** 48/100 features passing (48.0%)
 All tests passing: 920+ total tests across all test suites (zero regressions)
+
+### Session (2025-02-11) - Features #12, #15, #19
+
+**Accomplished:**
+- Feature #12 (Parse level from feature descriptions via regex): PASSED
+  - 'Level</strong>: 2' -> returns 2 ✓
+  - 'Level</strong>: 15' -> returns 15 ✓
+  - All Two-Handed Fighter reference levels (2, 3, 5, 7, 11, 15, 19) ✓
+  - Lowercase/uppercase/mixed case variants work (case-insensitive regex) ✓
+  - Missing Level tag -> returns null ✓
+  - Null/undefined/empty input -> returns null ✓
+  - Multiple Level patterns -> returns first match ✓
+  - Extra/no whitespace after colon handled ✓
+  - Returns integer type (not string) ✓
+  - LEVEL_REGEX is case-insensitive RegExp ✓
+  - 30/30 tests passing (test/test-feature-12.mjs)
+
+- Feature #15 (Identify additive features correctly): PASSED
+  - Feature with Level but no replaces/modifies -> additive ✓
+  - Additive features have null target (nothing to remove) ✓
+  - Feature with Level AND replaces -> replacement, NOT additive ✓
+  - Feature with Level AND modifies -> modification, NOT additive ✓
+  - Classification priority: replaces > modifies > additive > unknown ✓
+  - All Two-Handed Fighter replacement features classified correctly ✓
+  - Empty/null/undefined descriptions -> unknown type ✓
+  - classifyFeature returns object with type and target ✓
+  - 30/30 tests passing (test/test-feature-15.mjs)
+
+- Feature #19 (JE fixes override automatic parse results): PASSED
+  - Set up JE fix for Shattering Strike (broken description in module) ✓
+  - parseArchetype uses JE fix data instead of auto-parse ✓
+  - JE fix level, replaces, description all override auto-parse ✓
+  - Priority: JE fixes > JE missing > auto parse > ask user ✓
+  - Features without JE fix use auto-parse correctly ✓
+  - Mixed features: some from JE fix, others from auto-parse ✓
+  - Unknown features flagged with needsUserInput=true ✓
+  - Unmatched replacement features flagged with needsUserInput=true ✓
+  - Extra fields in JE fix passed through ✓
+  - 20/20 tests passing (test/test-feature-19.mjs)
+
+**Code Changes:**
+- test/test-feature-12.mjs: New test suite (30 tests) - parseLevel verification
+- test/test-feature-15.mjs: New test suite (30 tests) - classifyFeature additive identification
+- test/test-feature-19.mjs: New test suite (20 tests) - JE fix override of auto-parse
+
+**Verification:**
+- No production code changes needed (all functionality already implemented)
+- All existing test suites still pass (zero regressions)
+  - Feature #13: 28/28, Feature #14: 27/27, Feature #18: 48/48
+
+**Current Status:** 49/100 features passing (49.0%)
+(Features #1-19, #21-29, #30-31, #33-38, #43, #48-50, #55, #62, #68, #70-71, #75, #89)
