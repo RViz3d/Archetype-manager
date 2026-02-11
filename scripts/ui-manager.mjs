@@ -346,25 +346,339 @@ export class UIManager {
 
   /**
    * Show the on-the-fly fix dialog for unresolved features
-   * @param {object} feature - The unresolved feature
-   * @param {Array} baseFeatures - Available base class features
+   * @param {object} feature - The unresolved feature { name, description, level, archetypeSlug }
+   * @param {Array} baseFeatures - Available base class features [{ name, level, uuid }]
    * @returns {Promise<object|null>} The user's selection or null if cancelled
    */
   static async showFixDialog(feature, baseFeatures) {
-    // TODO: Implement fix dialog
-    console.log(`${MODULE_ID} | Fix dialog for:`, feature.name);
-    return null;
+    const content = this._buildFixDialogHTML(feature, baseFeatures);
+
+    return new Promise(resolve => {
+      const dialog = new Dialog({
+        title: `${MODULE_TITLE} - Fix: ${feature.name}`,
+        content,
+        buttons: {
+          confirm: {
+            icon: '<i class="fas fa-check"></i>',
+            label: 'Save Fix',
+            callback: async (html) => {
+              const element = html[0] || html;
+              const result = this._parseFixDialogResult(element, feature);
+
+              if (!result) {
+                ui.notifications.error('Please select what this feature replaces, or mark it as additive.');
+                resolve(null);
+                return;
+              }
+
+              // Save to JE fixes section
+              const fixEntry = {
+                level: result.level,
+                replaces: result.replaces,
+                description: feature.description || ''
+              };
+
+              const archetypeSlug = feature.archetypeSlug || this._slugify(feature.archetypeName || feature.name);
+
+              // Read existing fix data for this archetype, or create new
+              const existingFix = await JournalEntryDB.getArchetype(archetypeSlug);
+              const fixData = existingFix && existingFix._section === 'fixes'
+                ? { class: existingFix.class || '', features: { ...existingFix.features } }
+                : { class: feature.className || '', features: {} };
+
+              const featureSlug = this._slugify(feature.name);
+              fixData.features[featureSlug] = fixEntry;
+
+              const success = await JournalEntryDB.setArchetype('fixes', archetypeSlug, fixData);
+
+              if (success) {
+                ui.notifications.info(`${MODULE_TITLE} | Saved fix for "${feature.name}" to fixes database.`);
+                resolve(result);
+              } else {
+                ui.notifications.error('Failed to save fix entry.');
+                resolve(null);
+              }
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Cancel',
+            callback: () => resolve(null)
+          }
+        },
+        default: 'cancel',
+        close: () => resolve(null),
+        render: (html) => {
+          const element = html[0] || html;
+
+          // Wire up the additive checkbox to disable/enable dropdown
+          const additiveCheckbox = element.querySelector('.fix-additive-checkbox');
+          const replacesSelect = element.querySelector('.fix-replaces-select');
+
+          if (additiveCheckbox && replacesSelect) {
+            additiveCheckbox.addEventListener('change', () => {
+              replacesSelect.disabled = additiveCheckbox.checked;
+              if (additiveCheckbox.checked) {
+                replacesSelect.value = '';
+              }
+            });
+          }
+        }
+      }, { width: 500, classes: ['archetype-manager', 'archetype-fix-dialog'] });
+
+      dialog.render(true);
+    });
+  }
+
+  /**
+   * Build the HTML content for the fix dialog
+   * @param {object} feature - The unresolved feature
+   * @param {Array} baseFeatures - Available base class features
+   * @returns {string} HTML content
+   */
+  static _buildFixDialogHTML(feature, baseFeatures) {
+    const featureName = feature.name || 'Unknown Feature';
+    const featureDesc = feature.description || '<em>No description available</em>';
+    const featureLevel = feature.level || '';
+
+    // Build dropdown options from base class features
+    const baseOptions = (baseFeatures || [])
+      .sort((a, b) => (a.level || 0) - (b.level || 0))
+      .map(bf => {
+        const label = bf.name + (bf.level ? ` (Lv ${bf.level})` : '');
+        return `<option value="${bf.name}">${label}</option>`;
+      })
+      .join('');
+
+    return `
+      <div class="archetype-fix-dialog-content">
+        <div class="fix-feature-info" style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+          <h3 style="margin: 0 0 4px;"><i class="fas fa-puzzle-piece" style="color: #f80;"></i> ${featureName}</h3>
+          <div class="fix-description" style="max-height: 150px; overflow-y: auto; font-size: 0.9em; color: #555; padding: 4px; border: 1px solid #ddd; border-radius: 3px; background: #fff;">
+            ${featureDesc}
+          </div>
+        </div>
+
+        <p style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+          This feature could not be automatically parsed. Please specify what base class feature it replaces,
+          or mark it as an additive feature (grants something new without replacing anything).
+        </p>
+
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label>Level:</label>
+          <input type="number" class="fix-level-input" name="fix-level" value="${featureLevel}" min="1" max="20" style="width: 60px; text-align: center;" />
+        </div>
+
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label>Replaces:</label>
+          <select class="fix-replaces-select" name="fix-replaces" style="width: 100%;">
+            <option value="">-- Select base feature --</option>
+            ${baseOptions}
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" class="fix-additive-checkbox" name="fix-additive" />
+            <span>This is an <strong>additive</strong> feature (does not replace anything)</span>
+          </label>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Parse the result from the fix dialog
+   * @param {HTMLElement} element - The dialog element
+   * @param {object} feature - The original feature data
+   * @returns {object|null} Parsed result or null if invalid
+   */
+  static _parseFixDialogResult(element, feature) {
+    const levelInput = element.querySelector('.fix-level-input');
+    const replacesSelect = element.querySelector('.fix-replaces-select');
+    const additiveCheckbox = element.querySelector('.fix-additive-checkbox');
+
+    const isAdditive = additiveCheckbox?.checked || false;
+    const replaces = isAdditive ? null : (replacesSelect?.value || null);
+    const levelStr = levelInput?.value;
+    const level = levelStr ? parseInt(levelStr) : (feature.level || null);
+
+    // Must either be additive or have a replaces selection
+    if (!isAdditive && !replaces) {
+      return null;
+    }
+
+    return {
+      level: level,
+      replaces: replaces,
+      isAdditive: isAdditive,
+      featureName: feature.name
+    };
   }
 
   /**
    * Show the description verification dialog
-   * @param {object} feature - The feature to verify
-   * @returns {Promise<string|null>} Corrected description or null
+   * Shows raw module description, allows corrections with auto-strip formatting
+   * @param {object} feature - The feature to verify { name, description, archetypeSlug, className }
+   * @returns {Promise<object|null>} { correctedDescription } or null if cancelled
    */
   static async showDescriptionVerifyDialog(feature) {
-    // TODO: Implement description verification dialog
-    console.log(`${MODULE_ID} | Description verify for:`, feature.name);
-    return null;
+    const content = this._buildDescriptionVerifyHTML(feature);
+
+    return new Promise(resolve => {
+      const dialog = new Dialog({
+        title: `${MODULE_TITLE} - Verify: ${feature.name}`,
+        content,
+        buttons: {
+          save: {
+            icon: '<i class="fas fa-save"></i>',
+            label: 'Save Correction',
+            callback: async (html) => {
+              const element = html[0] || html;
+              const textarea = element.querySelector('.desc-correction-textarea');
+              const correctedDescription = textarea?.value?.trim() || '';
+
+              if (!correctedDescription) {
+                ui.notifications.error('Please enter a corrected description.');
+                resolve(null);
+                return;
+              }
+
+              // Save the corrected description to JE fixes
+              const archetypeSlug = feature.archetypeSlug || this._slugify(feature.archetypeName || feature.name);
+              const featureSlug = this._slugify(feature.name);
+
+              // Read existing fix data or create new
+              const existingFix = await JournalEntryDB.getArchetype(archetypeSlug);
+              const fixData = existingFix && existingFix._section === 'fixes'
+                ? { class: existingFix.class || '', features: { ...existingFix.features } }
+                : { class: feature.className || '', features: {} };
+
+              // Update or create the feature fix entry with corrected description
+              if (!fixData.features[featureSlug]) {
+                fixData.features[featureSlug] = {
+                  level: feature.level || null,
+                  replaces: feature.replaces || null,
+                  description: correctedDescription
+                };
+              } else {
+                fixData.features[featureSlug].description = correctedDescription;
+              }
+
+              const success = await JournalEntryDB.setArchetype('fixes', archetypeSlug, fixData);
+
+              if (success) {
+                ui.notifications.info(`${MODULE_TITLE} | Saved corrected description for "${feature.name}".`);
+                resolve({ correctedDescription });
+              } else {
+                ui.notifications.error('Failed to save description correction.');
+                resolve(null);
+              }
+            }
+          },
+          cancel: {
+            icon: '<i class="fas fa-times"></i>',
+            label: 'Cancel',
+            callback: () => resolve(null)
+          }
+        },
+        default: 'cancel',
+        close: () => resolve(null),
+        render: (html) => {
+          const element = html[0] || html;
+
+          // Set up paste handler to auto-strip HTML formatting
+          const textarea = element.querySelector('.desc-correction-textarea');
+          if (textarea) {
+            textarea.addEventListener('paste', (e) => {
+              e.preventDefault();
+              // Get plain text from clipboard, stripping any HTML
+              const clipboardData = e.clipboardData || window.clipboardData;
+              let text = '';
+              if (clipboardData) {
+                // Prefer plain text
+                text = clipboardData.getData('text/plain') || '';
+                // If no plain text, try HTML and strip tags
+                if (!text) {
+                  const html = clipboardData.getData('text/html') || '';
+                  text = this._stripHTML(html);
+                }
+              }
+              // Insert at cursor position
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+              textarea.selectionStart = textarea.selectionEnd = start + text.length;
+            });
+          }
+        }
+      }, { width: 550, classes: ['archetype-manager', 'archetype-desc-verify-dialog'] });
+
+      dialog.render(true);
+    });
+  }
+
+  /**
+   * Build HTML for the description verification dialog
+   * @param {object} feature - The feature data
+   * @returns {string} HTML content
+   */
+  static _buildDescriptionVerifyHTML(feature) {
+    const featureName = feature.name || 'Unknown Feature';
+    const rawDescription = feature.description || '<em>No description available</em>';
+
+    return `
+      <div class="archetype-desc-verify-content">
+        <h3 style="margin: 0 0 8px;"><i class="fas fa-file-alt" style="color: #08f;"></i> ${featureName}</h3>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label><strong>Raw Module Description:</strong></label>
+          <div class="desc-raw-display" style="max-height: 200px; overflow-y: auto; font-size: 0.9em; padding: 8px; border: 1px solid #ddd; border-radius: 3px; background: rgba(0,0,0,0.03);">
+            ${rawDescription}
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label><strong>Corrected Description:</strong></label>
+          <p style="font-size: 0.8em; color: #666; margin: 2px 0 4px;">
+            Paste or type the corrected plain-text description below. HTML will be automatically stripped on paste.
+          </p>
+          <textarea class="desc-correction-textarea" name="corrected-description" rows="6"
+            style="width: 100%; resize: vertical; font-family: monospace; font-size: 0.9em;"
+            placeholder="Paste or type the corrected description here..."></textarea>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Strip HTML tags from a string, preserving text content
+   * @param {string} html - HTML string
+   * @returns {string} Plain text
+   */
+  static _stripHTML(html) {
+    if (!html) return '';
+    // Use DOMParser if available, otherwise regex fallback
+    if (typeof DOMParser !== 'undefined') {
+      try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || '';
+      } catch (e) {
+        // Fallback to regex
+      }
+    }
+    // Regex fallback
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .trim();
   }
 
   /**
