@@ -1209,3 +1209,30 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Features #34,#35,#36: 94/94 passing
 
 **Current Status:** 62/100 features passing (62.0%)
+
+### Session (2025-02-11) - Feature #47
+
+**Accomplished:**
+- Feature #47 (Chat message posted on removal): PASSED
+  - Functionality already implemented in Applicator._postRemoveMessage()
+  - remove() calls _postRemoveMessage after successful removal
+  - Chat message includes module title header (h3)
+  - Actor name bolded, class name present, archetype slug bolded
+  - "removed" action word and "restored to original state" confirmation
+  - Different actor/class names correctly reflected
+  - Failed removal (non-existent slug, permission denied) produces no chat message
+  - Selective removal from multi-archetype stack posts correct message
+  - Each removal gets its own chat message
+  - Content contains no "undefined" or "null" strings
+  - Additive-only archetype removal also posts message
+  - Direct _postRemoveMessage testing confirms HTML structure
+  - 26/26 tests passing (test/test-feature-47.mjs)
+
+**Code Changes:**
+- test/test-feature-47.mjs: Verified existing test suite (26 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All 26 tests pass cleanly
+
+**Current Status:** 69/100 features passing (69.0%)
