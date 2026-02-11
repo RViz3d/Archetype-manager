@@ -667,3 +667,64 @@
 (Features #1-11, #13-14, #16-18, #21-29, #30, #33-36, #48-50, #62, #75, #89, and others)
 
 **All tests passing:** 94 new + existing suites, zero regressions
+
+### Session (2025-02-11) - Applicator & Removal Features
+
+**Accomplished:**
+- Feature #37 (Backup original classAssociations before modification): PASSED
+  - No backup flag exists initially on fresh class item
+  - Apply first archetype creates backup in originalAssociations flag
+  - Backup matches original classAssociations exactly (deep equality)
+  - Backup is a deep clone (not a reference)
+  - All 12 base UUIDs present with correct levels
+  - All resolvedName properties preserved in backup
+  - Apply second archetype does NOT overwrite original backup
+  - Backup survives duplicate application attempt
+  - Fresh class items (Rogue, empty class) get backup on first archetype
+  - Permission check: non-owner cannot apply (no backup created)
+  - 38/38 tests passing (test/test-feature-37.mjs)
+
+- Feature #38 (ClassAssociations modified correctly on application): PASSED
+  - Bravery removed (replaced by Shattering Strike) in diff
+  - Armor Training 1-4 and Armor Mastery all removed (replaced)
+  - Weapon Training modified (not removed)
+  - All 6 replacement features added at correct levels
+  - Modified Weapon Training entry present in updated associations
+  - Non-replaced levels untouched (BonusFeat, WT2-4, WeaponMastery)
+  - Single classItem.update() call for classAssociations
+  - _buildNewAssociations produces correct result (12 entries)
+  - Item copies created for modified features
+  - Actor and class item tracking flags set correctly
+  - 44/44 tests passing (test/test-feature-38.mjs)
+
+- Feature #43 (Full removal restores original classAssociations): PASSED
+  - Apply archetype → verify modified state
+  - Remove archetype → classAssociations restored to original exactly
+  - Same count, same order, same UUIDs and levels as original
+  - All 12 base UUIDs individually verified restored
+  - All flags cleared (archetypes, originalAssociations, appliedAt)
+  - Actor flags cleaned up completely
+  - Item copies deleted on removal
+  - Apply+remove cycle is idempotent (can repeat)
+  - Non-existent archetype removal fails gracefully
+  - Permission check works on removal
+  - Empty class removal restores empty array
+  - Chat message posted on removal
+  - 40/40 tests passing (test/test-feature-43.mjs)
+
+**Code Changes:**
+- test/test-feature-37.mjs: New test suite (38 tests) - Applicator backup
+- test/test-feature-38.mjs: New test suite (44 tests) - ClassAssociations modification
+- test/test-feature-43.mjs: New test suite (40 tests) - Archetype removal/restore
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions)
+  - Feature #37: 38/38 passing
+  - Feature #38: 44/44 passing
+  - Feature #43: 40/40 passing
+  - Feature #33: 43/43 passing
+  - Feature #8: 51/51 passing
+
+**Current Status:** 47/100 features passing (47.0%)
+(Features #1-11, #13-14, #16-18, #21-29, #30, #33-38, #43, #48-50, #62, #75, #89, and others)
