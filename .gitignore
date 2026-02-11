@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# FoundryVTT user data
+*.db
+*.lock
+
+# Autoforge
+.autoforge/
+features.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Obsidian
+.obsidian/
+
+# Existing non-module files
+Assemblatore/
+Feynman with profit/
+medical-content-business/
+Untitled.base
+app_spec.txt
+package.json
+package-lock.json

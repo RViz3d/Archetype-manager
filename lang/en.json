@@ -1,0 +1,69 @@
+{
+  "ARCHETYPE_MANAGER": {
+    "Title": "PF1e Archetype Manager",
+    "Settings": {
+      "ShowParseWarnings": "Show Parse Warnings",
+      "ShowParseWarningsHint": "Display warnings when archetype features cannot be automatically parsed"
+    },
+    "Dialog": {
+      "MainTitle": "Archetype Manager",
+      "SelectClass": "Select Class",
+      "SearchArchetypes": "Search archetypes...",
+      "NoArchetypes": "No matching archetypes found",
+      "Apply": "Apply Archetype",
+      "Remove": "Remove Archetype",
+      "Preview": "Preview Changes",
+      "AddArchetype": "Add Archetype",
+      "Cancel": "Cancel",
+      "Confirm": "Confirm",
+      "Back": "Back"
+    },
+    "Preview": {
+      "Title": "Preview Changes",
+      "Feature": "Feature",
+      "Level": "Level",
+      "Status": "Status",
+      "Unchanged": "Unchanged",
+      "Removed": "Removed",
+      "Added": "Added",
+      "Modified": "Modified"
+    },
+    "FixDialog": {
+      "Title": "Resolve Feature",
+      "Description": "This feature could not be automatically parsed. What does it replace?",
+      "SelectFeature": "Select base feature...",
+      "IsAdditive": "This is an additive feature (doesn't replace anything)",
+      "Save": "Save Fix"
+    },
+    "ManualEntry": {
+      "Title": "Add Archetype",
+      "TypeOfficial": "Official (Missing from module)",
+      "TypeCustom": "Custom / Homebrew",
+      "ArchetypeName": "Archetype Name",
+      "ClassName": "Class",
+      "AddFeature": "Add Feature",
+      "FeatureName": "Feature Name",
+      "FeatureLevel": "Level",
+      "FeatureReplaces": "Replaces"
+    },
+    "Notifications": {
+      "SelectToken": "Please select a token first.",
+      "NoClasses": "This actor has no class items. Add a class first.",
+      "Applied": "{name} applied to {class} successfully.",
+      "Removed": "Archetype removed from {class} successfully.",
+      "AlreadyApplied": "{name} is already applied to this class.",
+      "ConflictDetected": "Conflict detected: {archA} and {archB} both affect {feature}.",
+      "WrongClass": "This archetype is for {expected}, not {actual}.",
+      "RollbackComplete": "Application failed. Changes have been rolled back.",
+      "CorruptedData": "Corrupted data in {section} section was reset.",
+      "GMOnly": "Only the GM can modify this section.",
+      "CompendiumError": "Failed to load archetype compendium. Check that pf1e-archetypes is enabled."
+    },
+    "Confirmation": {
+      "ApplyTitle": "Apply Archetype?",
+      "ApplyMessage": "Are you sure you want to apply {name} to {class}? This will modify the class features.",
+      "RemoveTitle": "Remove Archetype?",
+      "RemoveMessage": "Are you sure you want to remove {name} from {class}? Class features will be restored to original."
+    }
+  }
+}

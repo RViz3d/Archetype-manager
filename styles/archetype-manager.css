@@ -1,0 +1,227 @@
+/**
+ * PF1e Archetype Manager - Styles
+ *
+ * Follows FoundryVTT's native design language.
+ * Uses FoundryVTT's existing CSS variables and conventions.
+ */
+
+/* === Main Dialog === */
+.archetype-manager-dialog {
+  min-width: 450px;
+  max-height: 80vh;
+}
+
+.archetype-manager-dialog .dialog-content {
+  padding: 8px;
+}
+
+/* === Class Selector === */
+.archetype-manager-dialog .class-selector {
+  margin-bottom: 8px;
+}
+
+.archetype-manager-dialog .class-selector select {
+  width: 100%;
+}
+
+/* === Search Field === */
+.archetype-manager-dialog .search-container {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.archetype-manager-dialog .search-container input {
+  width: 100%;
+  padding-left: 28px;
+}
+
+.archetype-manager-dialog .search-container i.fa-search {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+}
+
+/* === Archetype List === */
+.archetype-manager-dialog .archetype-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-light-1, #999);
+  border-radius: 3px;
+}
+
+.archetype-manager-dialog .archetype-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border-light-2, #ddd);
+  cursor: pointer;
+}
+
+.archetype-manager-dialog .archetype-item:hover {
+  background: var(--color-hover-bg, rgba(0, 0, 0, 0.05));
+}
+
+.archetype-manager-dialog .archetype-item.selected {
+  background: var(--color-bg-option, rgba(100, 149, 237, 0.1));
+}
+
+.archetype-manager-dialog .archetype-item.applied {
+  background: rgba(0, 128, 0, 0.08);
+}
+
+.archetype-manager-dialog .archetype-item .archetype-name {
+  flex: 1;
+}
+
+.archetype-manager-dialog .archetype-item .archetype-indicators {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+/* === Status Icons === */
+.archetype-manager .status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.archetype-manager .status-unchanged {
+  color: #080;
+}
+
+.archetype-manager .status-removed {
+  color: #c00;
+}
+
+.archetype-manager .status-modified {
+  color: #f80;
+}
+
+.archetype-manager .status-added {
+  color: #08f;
+}
+
+/* === Conflict Warning === */
+.archetype-manager .conflict-warning {
+  color: #d4a017;
+}
+
+.archetype-manager .conflict-warning i {
+  margin-right: 2px;
+}
+
+/* === Preview Dialog === */
+.archetype-preview-dialog {
+  min-width: 500px;
+}
+
+.archetype-preview-dialog .diff-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.archetype-preview-dialog .diff-table th,
+.archetype-preview-dialog .diff-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border-light-2, #ddd);
+  text-align: left;
+}
+
+.archetype-preview-dialog .diff-table th {
+  font-weight: bold;
+  background: var(--color-bg-option, rgba(0, 0, 0, 0.05));
+}
+
+.archetype-preview-dialog .diff-row-removed {
+  background: rgba(204, 0, 0, 0.08);
+}
+
+.archetype-preview-dialog .diff-row-added {
+  background: rgba(0, 136, 255, 0.08);
+}
+
+.archetype-preview-dialog .diff-row-modified {
+  background: rgba(255, 136, 0, 0.08);
+}
+
+.archetype-preview-dialog .level-input {
+  width: 50px;
+  text-align: center;
+}
+
+/* === Info Button === */
+.archetype-manager .info-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-hyperlink, #4b4a44);
+  padding: 2px 4px;
+}
+
+.archetype-manager .info-btn:hover {
+  color: var(--color-text-hyperlink, #7a7971);
+}
+
+/* === Manual Entry Dialog === */
+.archetype-manual-entry .feature-rows {
+  margin-top: 8px;
+}
+
+.archetype-manual-entry .feature-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  align-items: center;
+}
+
+.archetype-manual-entry .feature-row input {
+  flex: 1;
+}
+
+.archetype-manual-entry .feature-row select {
+  flex: 1;
+}
+
+.archetype-manual-entry .feature-row .remove-btn {
+  flex: 0 0 30px;
+}
+
+/* === Loading Indicator === */
+.archetype-manager .loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  gap: 8px;
+}
+
+.archetype-manager .loading-indicator i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* === Empty State === */
+.archetype-manager .empty-state {
+  text-align: center;
+  padding: 16px;
+  color: var(--color-text-dark-secondary, #666);
+  font-style: italic;
+}
+
+/* === Tooltip === */
+.archetype-manager [data-tooltip] {
+  position: relative;
+  cursor: help;
+}
