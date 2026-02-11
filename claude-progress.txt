@@ -1236,3 +1236,62 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
 - All 26 tests pass cleanly
 
 **Current Status:** 69/100 features passing (69.0%)
+
+### Session (2025-02-11) - Feature #61
+
+**Accomplished:**
+- Feature #61 (User cancellation at any dialog leaves clean state): PASSED
+  - Section 1: Main dialog close/cancel (4 tests)
+    - Close button callback is empty function (does nothing)
+    - Default button is "close"
+    - Escape/X close leaves no changes
+    - No selection + close = clean, no spurious warnings
+  - Section 2: Preview dialog cancel (5 tests)
+    - Close (X/Escape) returns null
+    - Close leaves no flags modified
+    - "Back" button returns "back" (not apply)
+    - "Back" leaves no partial changes
+    - Default is "back" (not "apply")
+  - Section 3: Fix dialog cancel (4 tests)
+    - Cancel callback resolves null
+    - Cancel leaves JE database untouched (all 3 sections)
+    - Close (X/Escape) resolves null
+    - Default button is cancel
+  - Section 4: Manual entry dialog cancel (5 tests)
+    - Cancel callback resolves null
+    - Cancel leaves JE untouched
+    - Close (X/Escape) resolves null
+    - Close leaves JE untouched
+    - Default button is cancel
+  - Section 5: Confirm dialog cancel (4 tests)
+    - Cancel resolves false
+    - Close (X/Escape) resolves false
+    - Default button is cancel
+    - Cancelled confirmation prevents archetype application
+  - Section 6: No flags modified on cancel (5 tests)
+    - No archetypes flag, no originalAssociations, no appliedAt, no actor flags, no appliedArchetypeData
+  - Section 7: No item copies created on cancel (4 tests)
+    - No createEmbeddedDocuments, no deleteEmbeddedDocuments, items unchanged, classAssociations identical
+  - Section 8: Preview-Confirm flow (3 tests)
+    - Cancel at preview returns null
+    - "Back" returns "back-to-main"
+    - Back-to-main leaves no changes
+  - Section 9: Description verify dialog cancel (4 tests)
+    - Cancel resolves null, close resolves null, JE untouched, default is cancel
+  - Section 10: Multi-dialog sequence (3 tests)
+    - Opening and cancelling all dialogs in sequence = clean state
+    - No ChatMessage.create calls on any cancel
+    - No classItem.update calls on any cancel
+  - Section 11: Apply Selected with no selection (1 test)
+    - Shows warning, no data changes
+  - 42/42 tests passing
+
+**Code Changes:**
+- test/test-feature-61.mjs: New test suite (42 tests) - dialog cancellation clean state
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions)
+  - Features #1-3: 26/26, Feature #42: 39/39, Feature #54: 54/54
+
+**Current Status:** 72/100 features passing (72.0%)
