@@ -1842,3 +1842,31 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #76: 24/24, Feature #61: 42/42, Feature #85: 50/50
 
 **Current Status:** 94/100 features passing (94.0%)
+
+### Session (2025-02-11) - Feature #95
+
+**Accomplished:**
+- Feature #95 (Class dropdown defaults to first class): PASSED
+  - No lastSelectedClass: first option is naturally first in dropdown for dual-class actor
+  - Single-class, triple-class, five-class actors all default to first class
+  - Order of classItems array determines dropdown order
+  - Render callback triggers loadArchetypes on initial open
+  - After render, archetype list is populated (empty-state or items)
+  - Loading indicator hidden after initial load completes
+  - Class select element has correct value (first class id) after render
+  - Empty lastSelectedClass string treated same as unset — first class selected
+  - Stale lastSelectedClass (non-existent id or tag) falls back to first class
+  - Applied archetypes section shows "None" or applied tags for default class
+  - All dialog buttons (Apply Selected, Add Archetype, Close) accessible
+  - Contrast: when lastSelectedClass matches second class, it overrides default
+  - After session reset, defaults back to first class
+  - Opening dialog saves first class id to lastSelectedClass setting
+  - 29/29 tests passing (test/test-feature-95.mjs)
+
+**Code Changes:**
+- test/test-feature-95.mjs: New test suite (29 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #48: 18/18, Feature #72: 31/31
