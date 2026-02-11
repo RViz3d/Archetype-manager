@@ -3,7 +3,108 @@
  *
  * Follows FoundryVTT's native design language.
  * Uses FoundryVTT's existing CSS variables and conventions.
+ *
+ * Design Principles:
+ * - Font: Signika (FoundryVTT standard), system-ui fallback
+ * - Colors: FoundryVTT CSS variables with fallbacks
+ * - Inputs/selects: inherit FoundryVTT form element styling
+ * - Buttons: FoundryVTT dialog button conventions
+ * - Border-radius: 3px (FoundryVTT standard)
+ * - Padding: 4px-8px for compact UI (FoundryVTT convention)
  */
+
+/* === FoundryVTT Design Language Foundation === */
+.archetype-manager,
+.archetype-manager-dialog,
+.archetype-preview-dialog,
+.archetype-fix-dialog,
+.archetype-desc-verify-dialog,
+.archetype-info-popup {
+  font-family: "Signika", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-dark-primary, #191813);
+}
+
+/* Form elements - consistent with FoundryVTT */
+.archetype-manager select,
+.archetype-manager-dialog select,
+.archetype-preview-dialog select {
+  font-family: "Signika", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border-light-1, #999);
+  border-radius: 3px;
+  background: var(--color-bg-input, #fff);
+  color: var(--color-text-dark-primary, #191813);
+}
+
+.archetype-manager input[type="text"],
+.archetype-manager-dialog input[type="text"],
+.archetype-manager input[type="number"],
+.archetype-manager-dialog input[type="number"],
+.archetype-preview-dialog input[type="number"] {
+  font-family: "Signika", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border-light-1, #999);
+  border-radius: 3px;
+  background: var(--color-bg-input, #fff);
+  color: var(--color-text-dark-primary, #191813);
+}
+
+.archetype-manager input[type="text"]:focus,
+.archetype-manager-dialog input[type="text"]:focus,
+.archetype-manager input[type="number"]:focus,
+.archetype-manager-dialog input[type="number"]:focus,
+.archetype-preview-dialog input[type="number"]:focus,
+.archetype-manager select:focus,
+.archetype-manager-dialog select:focus {
+  outline: none;
+  border-color: var(--color-border-highlight, #7a7971);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Labels - FoundryVTT style */
+.archetype-manager label,
+.archetype-manager-dialog label {
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--color-text-dark-primary, #191813);
+}
+
+/* Form groups - consistent spacing */
+.archetype-manager .form-group,
+.archetype-manager-dialog .form-group {
+  margin-bottom: 8px;
+}
+
+/* Headings - FoundryVTT style */
+.archetype-manager h3,
+.archetype-manager-dialog h3,
+.archetype-preview-dialog h3 {
+  font-family: "Signika", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--color-text-dark-primary, #191813);
+  border-bottom: none;
+}
+
+.archetype-manager h4,
+.archetype-manager-dialog h4 {
+  font-family: "Signika", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--color-text-dark-primary, #191813);
+}
+
+/* Horizontal rule - FoundryVTT style */
+.archetype-manager hr,
+.archetype-manual-entry hr {
+  border: none;
+  border-top: 1px solid var(--color-border-light-2, #ddd);
+  margin: 8px 0;
+}
 
 /* === Main Dialog === */
 .archetype-manager-dialog {
