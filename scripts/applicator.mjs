@@ -11,6 +11,7 @@
  */
 
 import { MODULE_ID, MODULE_TITLE } from './module.mjs';
+import { ConflictChecker } from './conflict-checker.mjs';
 
 export class Applicator {
   /**
@@ -37,8 +38,17 @@ export class Applicator {
       return false;
     }
 
-    // Validate class match
-    // (class validation logic to be implemented based on archetype's class field)
+    // Validate class match - archetype must be for the correct class
+    if (parsedArchetype.class) {
+      if (!ConflictChecker.validateClass(parsedArchetype, classItem)) {
+        const archetypeClass = parsedArchetype.class;
+        const className = classItem.name;
+        ui.notifications.error(
+          `${MODULE_TITLE} | ${parsedArchetype.name} is a ${archetypeClass} archetype and cannot be applied to ${className}.`
+        );
+        return false;
+      }
+    }
 
     try {
       // Step 1: Backup original classAssociations (only if first archetype)
