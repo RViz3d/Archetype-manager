@@ -188,18 +188,33 @@ export class CompendiumParser {
    * @returns {object|null} The matched association entry
    */
   static matchTarget(target, associations) {
-    const normalizedTarget = this.normalizeName(target);
+    if (!target || !associations || associations.length === 0) return null;
 
-    // Exact normalized match
+    const normalizedTarget = this.normalizeName(target);
+    if (!normalizedTarget) return null;
+
+    // Pass 1: Exact case-insensitive match (preserves numbers/tiers)
+    const lowerTarget = target.trim().toLowerCase();
     for (const assoc of associations) {
+      if (!assoc.resolvedName) continue;
+      if (assoc.resolvedName.trim().toLowerCase() === lowerTarget) {
+        return assoc;
+      }
+    }
+
+    // Pass 2: Normalized exact match (strips tiers/parentheticals for fuzzy matching)
+    for (const assoc of associations) {
+      if (!assoc.resolvedName) continue;
       if (this.normalizeName(assoc.resolvedName) === normalizedTarget) {
         return assoc;
       }
     }
 
-    // Partial match (target contained in name or vice versa)
+    // Pass 3: Partial match (target contained in name or vice versa)
     for (const assoc of associations) {
+      if (!assoc.resolvedName) continue;
       const normalizedName = this.normalizeName(assoc.resolvedName);
+      if (!normalizedName) continue;
       if (normalizedName.includes(normalizedTarget) || normalizedTarget.includes(normalizedName)) {
         return assoc;
       }
