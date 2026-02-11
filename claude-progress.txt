@@ -1403,3 +1403,47 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #68: 41/41, Feature #38: 44/44, Feature #42: 39/39
 
 **Current Status:** 74/100 features passing (74.0%)
+
+### Session (2025-02-11) - Features #72, #74
+
+**Accomplished:**
+- Feature #72 (Dialog remembers last selected class within session): PASSED
+  - lastSelectedClass setting registered with scope: 'client', config: false, type: String
+  - Default value is empty string (clean state on new session)
+  - Dialog reads lastSelectedClass on open to pre-select matching class
+  - Matching works by class item id OR class system.tag
+  - Changing class dropdown saves the new selection via game.settings.set
+  - Reopening dialog pre-selects the previously chosen class
+  - Multiple reopens maintain the selection across opens
+  - Session reset (resetMockEnvironment) clears the setting back to default
+  - Stale lastSelectedClass (removed class) doesn't cause errors
+  - Tag-based matching works across different actors with same class tags
+  - Full open-select-close-reopen cycle verified end-to-end
+  - 31/31 tests passing (test/test-feature-72.mjs)
+
+- Feature #74 (JE database entries persist across sessions): PASSED
+  - Entries written to all 3 JE sections (fixes, missing, custom) before reload
+  - All entries persist through simulated FoundryVTT reload (resetMockEnvironment)
+  - Data integrity verified: class fields, feature objects, levels, replaces values, descriptions
+  - getArchetype works correctly after reload with correct _section metadata
+  - Priority chain preserved after reload: fixes > missing > custom
+  - Modifications after reload persist (update, add, delete)
+  - Modifications persist through second reload
+  - JE database structure verified: correct name, three pages, valid JSON
+  - Data stored via FoundryVTT Document API (text.content in JournalEntryPage)
+  - ensureDatabase creates DB on fresh world with empty JSON objects
+  - Data survives three consecutive reloads
+  - Sections are independent: writing to one doesn't affect others
+  - 42/42 tests passing (test/test-feature-74.mjs)
+
+**Code Changes:**
+- test/test-feature-72.mjs: New test suite (31 tests) - dialog class memory
+- test/test-feature-74.mjs: New test suite (42 tests) - JE persistence
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Features #1-3: 26/26, Feature #61: 42/42, Feature #73: 39/39
+  - Features #21-23-24: passing
+
+**Current Status:** 78/100 features passing (78.0%)
