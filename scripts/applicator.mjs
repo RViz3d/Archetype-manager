@@ -15,6 +15,10 @@ import { DiffEngine } from './diff-engine.mjs';
 import { ConflictChecker } from './conflict-checker.mjs';
 
 export class Applicator {
+  // Guard flags for preventing double-click/concurrent operations
+  static _applyInProgress = false;
+  static _removeInProgress = false;
+
   /**
    * Apply an archetype to a class item
    * @param {Actor} actor - The actor document
@@ -24,6 +28,25 @@ export class Applicator {
    * @returns {boolean} Success or failure
    */
   static async apply(actor, classItem, parsedArchetype, diff) {
+    // Prevent double-click: if already applying, reject immediately
+    if (this._applyInProgress) {
+      ui.notifications.warn(`${MODULE_TITLE} | Application already in progress. Please wait.`);
+      return false;
+    }
+
+    this._applyInProgress = true;
+    try {
+      return await this._doApply(actor, classItem, parsedArchetype, diff);
+    } finally {
+      this._applyInProgress = false;
+    }
+  }
+
+  /**
+   * Internal apply implementation (called within the apply guard)
+   * @private
+   */
+  static async _doApply(actor, classItem, parsedArchetype, diff) {
     const slug = parsedArchetype.slug;
 
     // Permission check: players can only modify owned characters
@@ -110,6 +133,25 @@ export class Applicator {
    * @returns {boolean} Success or failure
    */
   static async remove(actor, classItem, slug) {
+    // Prevent double-click: if already removing, reject immediately
+    if (this._removeInProgress) {
+      ui.notifications.warn(`${MODULE_TITLE} | Removal already in progress. Please wait.`);
+      return false;
+    }
+
+    this._removeInProgress = true;
+    try {
+      return await this._doRemove(actor, classItem, slug);
+    } finally {
+      this._removeInProgress = false;
+    }
+  }
+
+  /**
+   * Internal remove implementation (called within the remove guard)
+   * @private
+   */
+  static async _doRemove(actor, classItem, slug) {
     // Permission check: players can only modify owned characters
     if (!game.user.isGM && !actor.isOwner) {
       ui.notifications.error(`${MODULE_TITLE} | You do not have permission to modify this character.`);
