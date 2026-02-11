@@ -70,6 +70,76 @@ export class ConflictChecker {
   }
 
   /**
+   * Get cumulative replacement tracking for a stack of archetypes
+   * Returns which base features are replaced/modified by which archetype
+   * @param {Array<object>} archetypeDataList - Array of parsed archetype data objects
+   * @returns {object} { replacements: Map<normalizedTarget, {archetypeName, featureName, type}>, totalReplaced: number }
+   */
+  static getCumulativeReplacements(archetypeDataList) {
+    const replacements = new Map();
+    let totalReplaced = 0;
+
+    for (const archetype of archetypeDataList) {
+      for (const feature of (archetype.features || [])) {
+        if (feature.target) {
+          const normalized = CompendiumParser.normalizeName(feature.target);
+          if (!replacements.has(normalized)) {
+            replacements.set(normalized, []);
+          }
+          replacements.get(normalized).push({
+            archetypeName: archetype.name,
+            featureName: feature.name,
+            type: feature.type,
+            target: feature.target
+          });
+          totalReplaced++;
+        }
+      }
+    }
+
+    return { replacements, totalReplaced };
+  }
+
+  /**
+   * Validate adding an archetype to an existing stack
+   * Checks against all already-stacked archetypes
+   * @param {object} newArchetypeData - The archetype to add
+   * @param {Array<object>} existingStack - Currently stacked archetypes
+   * @returns {object} { valid: boolean, conflicts: Array, cumulative: object }
+   */
+  static validateAddToStack(newArchetypeData, existingStack) {
+    const proposedStack = [...existingStack, newArchetypeData];
+    const validation = this.validateStacking(proposedStack);
+    const cumulative = this.getCumulativeReplacements(proposedStack);
+
+    return {
+      valid: validation.valid,
+      conflicts: validation.conflicts,
+      conflictPairs: validation.conflictPairs,
+      cumulative
+    };
+  }
+
+  /**
+   * Validate removing an archetype from a stack (ensure remaining are still valid)
+   * @param {string} slugToRemove - Slug of archetype to remove
+   * @param {Array<object>} currentStack - Current full stack
+   * @returns {object} { valid: boolean, remainingStack: Array, cumulative: object }
+   */
+  static validateRemoveFromStack(slugToRemove, currentStack) {
+    const remainingStack = currentStack.filter(a => a.slug !== slugToRemove);
+    const validation = this.validateStacking(remainingStack);
+    const cumulative = this.getCumulativeReplacements(remainingStack);
+
+    return {
+      valid: validation.valid,
+      conflicts: validation.conflicts,
+      remainingStack,
+      cumulative
+    };
+  }
+
+  /**
    * Validate that an archetype matches the target class
    * @param {object} archetype - Archetype data with class field
    * @param {Item} classItem - The PF1e class item
