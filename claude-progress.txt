@@ -959,3 +959,54 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #39: 44/44, Feature #44: 51/51, Feature #41: 56/56
 
 **Current Status:** 57/100 features passing (57.0%)
+
+### Session (2025-02-11) - Tracking Flags & Persistence Features
+
+**Accomplished:**
+- Feature #40 (Tracking flags written on application): PASSED
+  - classItem archetypes flag has slug after apply
+  - appliedAt flag has valid ISO 8601 timestamp
+  - actor appliedArchetypes flag with correct class tag key
+  - Second archetype adds to existing flags (both slugs present)
+  - Slugs in application order in the array
+  - Multi-class actor has independent entries per class
+  - Each class item has independent flags (Fighter vs Rogue)
+  - Fresh items have null flags (no initialization needed)
+  - Flags scoped to archetype-manager module namespace
+  - 47/47 tests passing (test/test-feature-40.mjs)
+
+- Feature #45 (Removal cleans up all tracking flags): PASSED
+  - Single archetype removal: all classItem flags (archetypes, originalAssociations, appliedAt) cleaned to null
+  - Actor appliedArchetypes cleaned to null when last archetype removed
+  - Partial removal (2 archetypes, remove 1): remaining slug preserved, removed slug gone
+  - originalAssociations backup preserved when archetypes remain
+  - appliedAt preserved when archetypes remain
+  - Multi-class isolation: removing from Fighter preserves Rogue flags
+  - Non-existent archetype removal: flags unchanged, returns false
+  - Apply-remove-apply cycle: fresh flags created correctly (no stale data)
+  - 50/50 tests passing (test/test-feature-45.mjs)
+
+- Feature #73 (Applied archetypes persist across FoundryVTT reload): PASSED
+  - classAssociations modifications persist (verified via tracking flags)
+  - archetypes flag persists and contains correct slug
+  - appliedAt flag persists as valid ISO timestamp
+  - originalAssociations backup persists with all 12 original entries
+  - actor appliedArchetypes persists with correct class tag entries
+  - Multiple archetypes on same class persist
+  - Archetype detectable via classItem flags after reload
+  - Archetype detectable via actor quick-lookup after reload
+  - Duplicate application check works from persisted flags
+  - All persistence uses FoundryVTT Document API (setFlag, update) - no browser storage
+  - 39/39 tests passing (test/test-feature-73.mjs)
+
+**Code Changes:**
+- test/test-feature-40.mjs: New test suite (47 tests) - Tracking flags on application
+- test/test-feature-45.mjs: New test suite (50 tests) - Removal cleans up flags
+- test/test-feature-73.mjs: New test suite (39 tests) - Persistence across reload
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #37: 38/38, Feature #38: 44/44, Feature #43: 40/40
+
+**Current Status:** 58/100 features passing (58.0%)
