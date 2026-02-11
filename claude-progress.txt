@@ -135,3 +135,64 @@
 - test/test-features-21-23-24.mjs: New test suite - 33/33 tests passing
 
 **Current Status:** 8/100 features passing (Features #1, #2, #3, #4, #5, #21, #23, #24)
+
+### Session 4 (2025-02-11)
+
+**Accomplished:**
+- Feature #22 (CRUD operations on JE missing section): PASSED
+  - Create missing entry with archetype data (divine-tracker ranger example)
+  - Read missing section and verify entry fields (class, features, levels)
+  - Update a feature (change level, add new feature)
+  - Read and verify update saved correctly
+  - Delete entry from missing section
+  - Verify deletion (readSection and getArchetype both confirm removal)
+  - Verify GM-only access: non-GM cannot write/delete, CAN read
+  - GM retains full CRUD access
+  - Persistence verified across simulated reload
+  - Invalid section name throws proper error
+  - 17/17 tests passing (test/test-feature-22.mjs)
+
+- Feature #27 (Manual entry for missing official archetypes): PASSED
+  - Implemented showManualEntryDialog in ui-manager.mjs
+  - Added _slugify helper for generating URL-friendly slugs
+  - Added _buildManualEntryHTML for dialog content generation
+  - Added _validateManualEntry for comprehensive form validation
+  - Type selector (official missing vs custom/homebrew)
+  - Archetype name and class input fields
+  - Dynamic feature rows with add/remove functionality
+  - Per-feature inputs: name, level, replaces
+  - GM-only access control for missing section
+  - Non-GM restricted to custom section only
+  - Saves to correct JE section via JournalEntryDB.setArchetype
+  - Input validation: required fields, level range, no duplicates
+  - Full round-trip: create → verify in JE DB → persist across reload
+  - Data structure verified compatible with applicator engine
+  - 23/23 tests passing (test/test-feature-27.mjs)
+
+- Feature #75 (Manual entry validates required fields): PASSED
+  - Empty archetype name → error (including whitespace-only)
+  - Empty class → error (including whitespace-only)
+  - No features (empty rows or no rows) → error
+  - Feature missing name → error
+  - Invalid levels: 0, -1, -5, non-numeric, empty, >20, 100 → error
+  - Boundary levels 1 and 20 → succeed
+  - Decimal level (3.5) → truncated to 3 (valid)
+  - Valid single/multi-feature forms → succeed
+  - Additive features (no replaces) → succeed
+  - Duplicate feature names detected (case-insensitive)
+  - Multiple errors reported simultaneously
+  - 22/22 tests passing (test/test-feature-75.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs: Implemented full showManualEntryDialog method
+  - Added _slugify, _buildManualEntryHTML, _validateManualEntry methods
+  - Dialog with type selector, name/class inputs, dynamic feature rows
+  - Comprehensive validation with clear error messages
+  - GM-only access control for missing section
+- test/test-feature-22.mjs: New test suite for JE missing CRUD
+- test/test-feature-27.mjs: New test suite for manual entry dialog
+- test/test-feature-75.mjs: New test suite for field validation
+
+**Current Status:** 12/100 features passing (Features #1-5, #21-24, #27, #75)
+
+**All tests passing:** 88/88 total tests across all test suites (zero regressions)
