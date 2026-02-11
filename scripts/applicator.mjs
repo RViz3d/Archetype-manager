@@ -11,6 +11,7 @@
  */
 
 import { MODULE_ID, MODULE_TITLE } from './module.mjs';
+import { DiffEngine } from './diff-engine.mjs';
 import { ConflictChecker } from './conflict-checker.mjs';
 
 export class Applicator {
@@ -74,6 +75,11 @@ export class Applicator {
       await classItem.setFlag(MODULE_ID, 'archetypes', [...existingArchetypes, slug]);
       await classItem.setFlag(MODULE_ID, 'appliedAt', new Date().toISOString());
 
+      // Store parsed archetype data for selective removal rebuild
+      const storedArchetypeData = classItem.getFlag(MODULE_ID, 'appliedArchetypeData') || {};
+      storedArchetypeData[slug] = foundry.utils.deepClone(parsedArchetype);
+      await classItem.setFlag(MODULE_ID, 'appliedArchetypeData', storedArchetypeData);
+
       // Update actor-level quick lookup
       const actorArchetypes = actor.getFlag(MODULE_ID, 'appliedArchetypes') || {};
       const classTag = classItem.system.tag || classItem.name.slugify();
@@ -129,11 +135,28 @@ export class Applicator {
         await classItem.unsetFlag(MODULE_ID, 'archetypes');
         await classItem.unsetFlag(MODULE_ID, 'originalAssociations');
         await classItem.unsetFlag(MODULE_ID, 'appliedAt');
+        await classItem.unsetFlag(MODULE_ID, 'appliedArchetypeData');
       } else {
         // Selective removal - rebuild from remaining archetypes
         const remaining = existingArchetypes.filter(a => a !== slug);
+        const backup = classItem.getFlag(MODULE_ID, 'originalAssociations');
+
+        if (backup) {
+          // Rebuild classAssociations by re-applying remaining archetypes to the backup
+          const rebuiltAssociations = await this._rebuildForRemainingArchetypes(
+            backup, remaining, classItem
+          );
+          await classItem.update({
+            'system.links.classAssociations': rebuiltAssociations
+          });
+        }
+
         await classItem.setFlag(MODULE_ID, 'archetypes', remaining);
-        // TODO: Rebuild classAssociations for remaining archetypes
+
+        // Remove stored parsed data for the removed archetype
+        const storedData = classItem.getFlag(MODULE_ID, 'appliedArchetypeData') || {};
+        delete storedData[slug];
+        await classItem.setFlag(MODULE_ID, 'appliedArchetypeData', storedData);
       }
 
       // Delete any item copies created for this archetype
@@ -237,6 +260,32 @@ export class Applicator {
   }
 
   /**
+   * Rebuild classAssociations for remaining archetypes after selective removal
+   * Starts from backup (original) and sequentially applies each remaining archetype's diff
+   * @param {Array} backup - Original classAssociations from before any archetype was applied
+   * @param {Array<string>} remainingSlugs - Slugs of archetypes that remain applied
+   * @param {Item} classItem - The class item (to read stored archetype data from flags)
+   * @returns {Array} Rebuilt classAssociations reflecting only remaining archetypes
+   * @private
+   */
+  static async _rebuildForRemainingArchetypes(backup, remainingSlugs, classItem) {
+    const storedData = classItem.getFlag(MODULE_ID, 'appliedArchetypeData') || {};
+    let currentAssociations = foundry.utils.deepClone(backup);
+
+    for (const remainingSlug of remainingSlugs) {
+      const parsedArchetype = storedData[remainingSlug];
+      if (!parsedArchetype || !parsedArchetype.features) continue;
+
+      // Generate diff from current state for this archetype
+      const diff = DiffEngine.generateDiff(currentAssociations, parsedArchetype);
+      // Build new associations from diff
+      currentAssociations = this._buildNewAssociations(diff);
+    }
+
+    return currentAssociations;
+  }
+
+  /**
    * Rollback a failed application
    * @private
    */
@@ -252,6 +301,13 @@ export class Applicator {
       // Remove the archetype from tracking
       const archetypes = classItem.getFlag(MODULE_ID, 'archetypes') || [];
       await classItem.setFlag(MODULE_ID, 'archetypes', archetypes.filter(a => a !== slug));
+
+      // Remove stored parsed data for the rolled-back archetype
+      const storedData = classItem.getFlag(MODULE_ID, 'appliedArchetypeData') || {};
+      delete storedData[slug];
+      await classItem.setFlag(MODULE_ID, 'appliedArchetypeData',
+        Object.keys(storedData).length > 0 ? storedData : null
+      );
 
       // Delete any copies created during failed apply
       await this._deleteCreatedCopies(actor, slug);
