@@ -355,3 +355,63 @@
 (Features #1-11, #17, #21-24, #27, #48, #62, #75)
 
 **All tests passing:** 398 total tests across all test suites (zero regressions)
+
+### Session 8 (2025-02-11)
+
+**Accomplished:**
+- Feature #13 (Parse 'replaces X' from feature descriptions): PASSED
+  - 'replaces Bravery.' -> 'Bravery' ✓
+  - 'replaces Armor Training 1.' -> 'Armor Training 1' ✓
+  - 'replace Weapon Training.' (singular) -> 'Weapon Training' ✓
+  - No replaces pattern -> null ✓
+  - 'replaces the X class feature.' -> extracts correctly ✓
+  - Case insensitive matching ✓
+  - Two-Handed Fighter reference data: all 6 replacement features parsed correctly
+  - classifyFeature correctly classifies as 'replacement' type
+  - 28/28 tests passing (test/test-feature-13.mjs)
+
+- Feature #14 (Parse 'modifies X' from feature descriptions): PASSED
+  - 'modifies Weapon Training.' -> 'Weapon Training' ✓
+  - 'modify Armor Training.' (singular) -> 'Armor Training' ✓
+  - 'modifying the X class feature.' -> extracts correctly ✓
+  - No modify pattern -> null ✓
+  - All three forms matched: modify, modifies, modifying
+  - Case insensitive matching ✓
+  - classifyFeature correctly classifies as 'modification' type
+  - Modification not confused with replacement (and vice versa)
+  - 27/27 tests passing (test/test-feature-14.mjs)
+
+- Feature #16 (Feature name normalization for matching): PASSED
+  - 'Armor Training 1' -> 'armor training' ✓
+  - 'Weapon Training (Swords)' -> 'weapon training' ✓
+  - '  Bravery  ' -> 'bravery' ✓
+  - 'Armor Training IV' -> 'armor training' ✓
+  - Case insensitive matching works ✓
+  - All Armor Training tiers normalize to same base name
+  - Roman numerals I through VI stripped
+  - Multiple parentheticals stripped
+  - Mid-name parentheticals handled (preserves word boundaries)
+  - Combined parenthetical + trailing number handled
+  - Null/undefined/empty returns empty string
+  - matchTarget fuzzy matching verified with normalized names
+  - 32/32 tests passing (test/test-feature-16.mjs)
+
+**Code Changes:**
+- scripts/compendium-parser.mjs: Fixed normalizeName() method
+  - Changed parenthetical replacement from '' to ' ' (preserves word boundaries)
+  - Added \s+ collapsing step after parenthetical removal
+  - Fixes 'Rage (Greater) Powers' -> 'rage powers' (was 'ragepowers')
+  - Fixes 'Weapon Training (Swords) 2' -> 'weapon training' (was 'weapon training2')
+- test/test-feature-13.mjs: New test suite (28 tests)
+- test/test-feature-14.mjs: New test suite (27 tests)
+- test/test-feature-16.mjs: New test suite (32 tests)
+
+**Verification:**
+- All existing test suites still pass (zero regressions)
+- Features #11, #17, #62 tests: 32/32 passing
+- Features #13, #14, #16 tests: 87/87 passing
+
+**Current Status:** 21/100 features passing
+(Features #1-11, #13-14, #16-17, #21-24, #27, #48, #62, #75)
+
+**All tests passing:** 485 total tests across all test suites (zero regressions)
