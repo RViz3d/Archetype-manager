@@ -13,6 +13,7 @@
 import { MODULE_ID, MODULE_TITLE } from './module.mjs';
 import { CompendiumParser } from './compendium-parser.mjs';
 import { DiffEngine } from './diff-engine.mjs';
+import { ConflictChecker } from './conflict-checker.mjs';
 import { Applicator } from './applicator.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
 
@@ -101,6 +102,8 @@ export class UIManager {
         // State
         let archetypeData = [];
         let currentClassItem = null;
+        let appliedArchetypeDataList = []; // Parsed data for already-applied archetypes
+        let selectedArchetypes = new Set(); // Slugs of selected archetypes for stacking
 
         /**
          * Load archetypes for the selected class
@@ -175,9 +178,15 @@ export class UIManager {
             // Sort alphabetically
             archetypeData.sort((a, b) => a.name.localeCompare(b.name));
 
+            // Build parsed data for already-applied archetypes (for conflict checking)
+            appliedArchetypeDataList = this._buildAppliedArchetypeData(currentClassItem, archetypeData);
+
           } catch (e) {
             console.error(`${MODULE_ID} | Error loading archetypes:`, e);
           }
+
+          // Clear selections when class changes
+          selectedArchetypes.clear();
 
           // Hide loading
           if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -230,15 +239,32 @@ export class UIManager {
 
           archetypeListEl.innerHTML = filtered.map(arch => {
             const isApplied = applied.includes(arch.slug);
+            const isSelected = selectedArchetypes.has(arch.slug);
             const appliedClass = isApplied ? ' applied' : '';
+            const selectedClass = isSelected ? ' selected' : '';
             const sourceIcon = arch.source === 'compendium' ? 'fa-book' :
                                arch.source === 'missing' ? 'fa-exclamation-triangle' : 'fa-user';
             const sourceLabel = arch.source === 'compendium' ? 'From compendium' :
                                 arch.source === 'missing' ? 'Official (added manually)' : 'Custom/Homebrew';
 
-            return `<div class="archetype-item${appliedClass}" data-slug="${arch.slug}" data-source="${arch.source}">
+            // Check conflicts against applied archetypes
+            let conflictWarning = '';
+            let hasConflict = false;
+            if (!isApplied && arch.parsedData && appliedArchetypeDataList.length > 0) {
+              const conflicts = ConflictChecker.checkAgainstApplied(arch.parsedData, appliedArchetypeDataList);
+              if (conflicts.length > 0) {
+                hasConflict = true;
+                const conflictNames = conflicts.map(c => c.featureName).join(', ');
+                conflictWarning = `<span class="status-icon conflict-warning" title="Conflicts with applied archetype(s): ${conflictNames}" style="color: #f80;">
+                  <i class="fas fa-exclamation-triangle"></i>
+                </span>`;
+              }
+            }
+
+            return `<div class="archetype-item${appliedClass}${selectedClass}" data-slug="${arch.slug}" data-source="${arch.source}" data-has-conflict="${hasConflict}">
               <span class="archetype-name">${arch.name}</span>
               <span class="archetype-indicators">
+                ${conflictWarning}
                 ${isApplied ? '<span class="status-icon status-unchanged" title="Applied"><i class="fas fa-check-circle"></i></span>' : ''}
                 <span class="status-icon" title="${sourceLabel}"><i class="fas ${sourceIcon}"></i></span>
                 <button class="info-btn" data-slug="${arch.slug}" title="Info">
@@ -254,10 +280,52 @@ export class UIManager {
               // Don't trigger on info button clicks
               if (e.target.closest('.info-btn')) return;
 
-              // Toggle selection
-              const wasSelected = item.classList.contains('selected');
-              archetypeListEl.querySelectorAll('.archetype-item').forEach(i => i.classList.remove('selected'));
-              if (!wasSelected) {
+              const slug = item.dataset.slug;
+              const hasConflict = item.dataset.hasConflict === 'true';
+              const isApplied = item.classList.contains('applied');
+
+              // Don't allow selecting already-applied archetypes
+              if (isApplied) return;
+
+              // Warn and block if conflict with applied archetypes
+              if (hasConflict) {
+                const arch = archetypeData.find(a => a.slug === slug);
+                if (arch && arch.parsedData) {
+                  const conflicts = ConflictChecker.checkAgainstApplied(arch.parsedData, appliedArchetypeDataList);
+                  const conflictDetails = conflicts.map(c =>
+                    `"${c.featureA}" (${c.archetypeA}) conflicts with "${c.featureB}" (${c.archetypeB}) over ${c.featureName}`
+                  ).join('\n');
+                  ui.notifications.warn(`${MODULE_TITLE} | Cannot select ${arch.name}: conflicts with applied archetype(s).\n${conflictDetails}`);
+                } else {
+                  ui.notifications.warn(`${MODULE_TITLE} | This archetype conflicts with an already-applied archetype.`);
+                }
+                return;
+              }
+
+              // Toggle multi-selection
+              if (selectedArchetypes.has(slug)) {
+                selectedArchetypes.delete(slug);
+                item.classList.remove('selected');
+              } else {
+                // Check stacking conflicts with other selected archetypes
+                const newArch = archetypeData.find(a => a.slug === slug);
+                if (newArch?.parsedData && selectedArchetypes.size > 0) {
+                  const selectedDataList = [...selectedArchetypes].map(s => {
+                    const a = archetypeData.find(x => x.slug === s);
+                    return a?.parsedData;
+                  }).filter(Boolean);
+
+                  const allToValidate = [...selectedDataList, ...appliedArchetypeDataList];
+                  const conflicts = ConflictChecker.checkAgainstApplied(newArch.parsedData, allToValidate);
+
+                  if (conflicts.length > 0) {
+                    const conflictDetails = conflicts.map(c => c.featureName).join(', ');
+                    ui.notifications.warn(`${MODULE_TITLE} | Cannot add ${newArch.name}: conflicts over ${conflictDetails}`);
+                    return;
+                  }
+                }
+
+                selectedArchetypes.add(slug);
                 item.classList.add('selected');
               }
             });
@@ -348,6 +416,54 @@ export class UIManager {
               });
             });
           }
+
+          // Wire up info buttons for feature descriptions
+          const infoBtns = element.querySelectorAll('.info-btn');
+          if (infoBtns) {
+            infoBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.index);
+                if (isNaN(idx) || !diff[idx]) return;
+
+                const entry = diff[idx];
+                const feature = entry.archetypeFeature;
+                if (!feature) return;
+
+                const featureName = feature.name || entry.name || 'Unknown Feature';
+                const description = feature.description || '<em>No description available</em>';
+                const source = feature.source || 'compendium';
+                const sourceLabel = source === 'custom' ? 'Custom/Homebrew' :
+                                    source === 'missing' ? 'Official (manually added)' : 'Compendium Module';
+
+                new Dialog({
+                  title: `${MODULE_TITLE} - ${featureName}`,
+                  content: `
+                    <div class="feature-info-popup" style="padding: 4px;">
+                      <h3 style="margin: 0 0 4px;">
+                        <i class="fas fa-info-circle" style="color: #08f;"></i>
+                        ${featureName}
+                      </h3>
+                      <p style="font-size: 0.85em; color: #666; margin: 0 0 8px;">
+                        Source: ${sourceLabel} | Level: ${feature.level || '?'} | Type: ${feature.type || 'unknown'}
+                      </p>
+                      <div style="max-height: 250px; overflow-y: auto; padding: 8px; border: 1px solid #ddd; border-radius: 3px; background: rgba(0,0,0,0.03); font-size: 0.9em;">
+                        ${description}
+                      </div>
+                    </div>
+                  `,
+                  buttons: {
+                    ok: {
+                      icon: '<i class="fas fa-check"></i>',
+                      label: 'OK',
+                      callback: () => {}
+                    }
+                  },
+                  default: 'ok'
+                }, { width: 450, classes: ['archetype-manager', 'archetype-info-popup'] }).render(true);
+              });
+            });
+          }
         }
       }, {
         width: 550,
@@ -376,6 +492,7 @@ export class UIManager {
     const rows = (diff || []).map((entry, idx) => {
       const info = statusIcons[entry.status] || statusIcons.unchanged;
       const levelEditable = entry.status === 'added' || entry.status === 'modified';
+      const hasDescription = entry.archetypeFeature && (entry.status === 'added' || entry.status === 'modified');
 
       return `<tr class="preview-row preview-${entry.status}">
         <td style="text-align:center;">
@@ -389,7 +506,13 @@ export class UIManager {
             : `<span>${entry.level || '?'}</span>`
           }
         </td>
-        <td>${entry.name || 'Unknown'}</td>
+        <td>
+          ${entry.name || 'Unknown'}
+          ${hasDescription
+            ? `<button class="info-btn" data-index="${idx}" title="Show description" style="border:none;background:none;cursor:pointer;color:#08f;padding:0 4px;"><i class="fas fa-info-circle"></i></button>`
+            : ''
+          }
+        </td>
         <td style="font-size:0.85em;color:${info.color};">${info.label}</td>
       </tr>`;
     }).join('');
@@ -1085,6 +1208,37 @@ export class UIManager {
 
       dialog.render(true);
     });
+  }
+
+  /**
+   * Build parsed archetype data for already-applied archetypes (for conflict checking)
+   * Uses the archetype data list to find matching entries and build feature data.
+   * @param {Item} classItem - The class item with applied archetype flags
+   * @param {Array} archetypeDataList - The loaded archetype data list
+   * @returns {Array<object>} Array of parsed archetype data objects
+   */
+  static _buildAppliedArchetypeData(classItem, archetypeDataList) {
+    const applied = classItem?.getFlag?.(MODULE_ID, 'archetypes') || [];
+    if (applied.length === 0) return [];
+
+    const result = [];
+    for (const slug of applied) {
+      // Try to find the archetype in our data
+      const archData = archetypeDataList.find(a => a.slug === slug);
+      if (archData?.parsedData) {
+        result.push(archData.parsedData);
+      } else {
+        // Build minimal data from JE database if available
+        // Just use the slug as a placeholder with name derived from slug
+        const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        result.push({
+          name: displayName,
+          slug,
+          features: []
+        });
+      }
+    }
+    return result;
   }
 
   /**
