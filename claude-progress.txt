@@ -1870,3 +1870,28 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
 - No mock data patterns in production code (scripts/)
 - All existing test suites still pass (zero regressions):
   - Feature #48: 18/18, Feature #72: 31/31
+
+### Session (2025-02-11) - Feature #94
+
+**Accomplished:**
+- Feature #94 (Archetype removal removes from all lookups): PASSED
+  - Section 1: Apply and verify all flags set (archetypes, originalAssociations, appliedAt, appliedArchetypeData, actor flags)
+  - Section 2: Remove and verify complete flag cleanup (all 5 flag locations cleared)
+  - Section 3: Dialog UI shows no applied indicator after removal (no CSS class, no check-circle icon, applied list shows "None", _buildAppliedArchetypeData returns empty)
+  - Section 4: Multi-archetype selective removal (removed slug gone from all flags, remaining archetype preserved, backup preserved)
+  - Section 5: Full apply-remove-reopen cycle (clean slate, re-apply succeeds, no duplicate warnings)
+  - Section 6: Edge cases (removing non-applied doesn't corrupt, double removal safe, multi-class isolation, multiple cycles)
+  - Section 7: Created item copies cleaned up on removal (_deleteCreatedCopies verified)
+  - Section 8: UI dialog verification (no applied class, item clickable, None in applied section, conflict checker empty)
+  - Section 9: Removal notifications and messages (chat message posted, success notification shown)
+  - 37/37 tests passing (test/test-feature-94.mjs)
+
+**Code Changes:**
+- test/test-feature-94.mjs: New test suite (37 tests) - Archetype removal from all lookups
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #43: 40/40, Feature #82: 25/25, Feature #93: 35/35
+
+**Current Status:** 94/100 features passing (94.0%)
