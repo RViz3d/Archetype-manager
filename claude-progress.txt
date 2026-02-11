@@ -1668,3 +1668,44 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #54: 54/54, Feature #77: 40/40
 
 **Current Status:** 87/100 features passing (87.0%)
+
+### Session (2025-02-11) - Features #90, #91
+
+**Accomplished:**
+- Feature #90 (Search with special characters doesn't crash): PASSED
+  - All regex special characters tested: ( ) * \ ' " + ? . ^ $ [] {} |
+  - Combined patterns like "(.*)" and "\\d" don't crash
+  - HTML-like "<script>" doesn't crash
+  - Unicode, emoji, null byte, tab, newline all handled safely
+  - Parenthetical archetype names like "Brawler (Fighter)" searchable with "(" and "(Fighter)"
+  - Search still works normally after special character searches
+  - Clearing search after special chars restores full list
+  - Very long strings (1000 chars) don't crash
+  - 30/30 tests passing (test/test-feature-90.mjs)
+
+- Feature #91 (Search shows zero-results message): PASSED
+  - Enhanced empty-state message to include search term and helpful suggestion
+  - "No matching archetypes found for 'xyznonexistent'" with search icon
+  - Helpful sub-message: "Try a different search term or clear the search"
+  - Message dynamically updates when search term changes
+  - Search field remains editable after no results (not disabled/readOnly)
+  - Can type new search or clear to restore full list after no results
+  - Class empty-state ("No archetypes available") differs from search empty-state
+  - Trimmed search term displayed in message
+  - 20/20 tests passing (test/test-feature-91.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs: Enhanced renderArchetypeList empty-state message
+  - Added search icon (fa-search) to no-results message
+  - Added search term display in message (e.g., 'for "xyznonexistent"')
+  - Added helpful suggestion: "Try a different search term or clear the search"
+- test/test-feature-90.mjs: New test suite (30 tests) - special character search safety
+- test/test-feature-91.mjs: New test suite (20 tests) - zero-results message
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Features #49,#50,#89: 30/30, Feature #80: 25/25
+  - Feature #86: 42/42, Feature #90: 30/30
+
+**Current Status:** 90/100 features passing (90.0%)
