@@ -1010,3 +1010,38 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #37: 38/38, Feature #38: 44/44, Feature #43: 40/40
 
 **Current Status:** 58/100 features passing (58.0%)
+
+### Session (2025-02-11) - Feature #20
+
+**Accomplished:**
+- Feature #20 (Parse failure triggers user prompt dialog): PASSED
+  - Added parseArchetypeWithPrompts method to CompendiumParser
+  - Method wraps parseArchetype and iterates over features with needsUserInput=true
+  - For each unparseable feature, invokes a promptCallback with feature data and base class features
+  - Callback receives: feature name, description, level, archetypeSlug, archetypeName, className
+  - Base features list built from resolved associations (name, level, uuid)
+  - User can select a replacement from base features dropdown or mark as additive
+  - User's choice updates parsed feature data (type, target, level, matchedAssociation)
+  - Cancelled prompts leave feature as needsUserInput=true
+  - Fix data saved to JE fixes section persists and is used on subsequent parses
+  - JE fix takes priority over both auto-parse and user prompts
+  - Multiple fixes for same archetype coexist correctly
+  - Handles edge cases: empty associations, null features, null properties
+  - 42/42 tests passing (test/test-feature-20.mjs)
+
+**Code Changes:**
+- scripts/compendium-parser.mjs: Added parseArchetypeWithPrompts static method
+  - Accepts promptCallback option for user interaction
+  - Resolves associations and builds base features dropdown data
+  - Iterates over needsUserInput features and invokes callback
+  - Updates feature data with user's choice (replacement or additive)
+  - Matches user-selected replacement against resolved associations
+- test/test-feature-20.mjs: New test suite (42 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #19: 20/20, Feature #18: 48/48, Feature #25: 59/59
+  - Feature #15: 30/30, Feature #12: 30/30
+
+**Current Status:** 59/100 features passing (59.0%)
