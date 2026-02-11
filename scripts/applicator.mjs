@@ -19,6 +19,42 @@ export class Applicator {
   static _applyInProgress = false;
   static _removeInProgress = false;
 
+  // Per-actor operation locks to prevent concurrent modifications on the same actor
+  // Maps actor.id -> Promise that resolves when the current operation completes
+  static _actorLocks = new Map();
+
+  /**
+   * Acquire a per-actor lock to serialize operations on the same actor.
+   * If another operation is in progress on this actor, the caller waits.
+   * This prevents data corruption from concurrent apply/remove on the same actor.
+   * @param {string} actorId - The actor's ID
+   * @param {Function} fn - Async function to execute while holding the lock
+   * @returns {*} Result of fn
+   * @private
+   */
+  static async _withActorLock(actorId, fn) {
+    // Wait for any existing lock on this actor to complete
+    const existingLock = this._actorLocks.get(actorId);
+    if (existingLock) {
+      try { await existingLock; } catch (_) { /* ignore errors from previous ops */ }
+    }
+
+    // Create a new lock (a promise that resolves when our operation completes)
+    let releaseLock;
+    const lockPromise = new Promise(resolve => { releaseLock = resolve; });
+    this._actorLocks.set(actorId, lockPromise);
+
+    try {
+      return await fn();
+    } finally {
+      releaseLock();
+      // Clean up the lock if it's still ours
+      if (this._actorLocks.get(actorId) === lockPromise) {
+        this._actorLocks.delete(actorId);
+      }
+    }
+  }
+
   /**
    * Apply an archetype to a class item
    * @param {Actor} actor - The actor document
@@ -36,7 +72,7 @@ export class Applicator {
 
     this._applyInProgress = true;
     try {
-      return await this._doApply(actor, classItem, parsedArchetype, diff);
+      return await this._withActorLock(actor.id, () => this._doApply(actor, classItem, parsedArchetype, diff));
     } finally {
       this._applyInProgress = false;
     }
@@ -141,7 +177,7 @@ export class Applicator {
 
     this._removeInProgress = true;
     try {
-      return await this._doRemove(actor, classItem, slug);
+      return await this._withActorLock(actor.id, () => this._doRemove(actor, classItem, slug));
     } finally {
       this._removeInProgress = false;
     }
