@@ -1089,3 +1089,30 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #29: 26/26
 
 **Current Status:** 59/100 features passing (59.0%)
+
+### Session (2025-02-11) - Feature #42: Error Rollback
+
+**Accomplished:**
+- Feature #42 (Error rollback restores original state): PASSED
+  - Simulated failures at all stages of apply(): classItem.update, createEmbeddedDocuments, setFlag, ChatMessage.create
+  - Verified rollback method called with correct parameters (actor, classItem, slug)
+  - Verified classAssociations restored to original 12 entries after rollback
+  - All 12 UUIDs and levels match original after restore
+  - Orphaned item copies deleted (only matching slug, not other archetypes)
+  - Tracking flags cleaned up (slug removed from archetypes flag)
+  - Actor flags not corrupted; error notification shown; no success notification
+  - Console.error logged; apply() returns false; actor in clean state for retry
+  - Successful retry works after rollback
+  - Edge cases: clean state, missing backup, rollback failing, replacement-only, empty diff
+  - Direct _rollback testing: restore, slug removal, copy deletion
+  - 39/39 tests passing (test/test-feature-42.mjs)
+
+**Code Changes:**
+- test/test-feature-42.mjs: New test suite (39 tests) - Error rollback verification
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #37: 38/38, Feature #38: 44/44, Feature #43: 40/40
+
+**Current Status:** 59/100 features passing (59.0%)
