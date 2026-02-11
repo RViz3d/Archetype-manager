@@ -434,9 +434,10 @@ export class UIManager {
         }
       }
     }, {
-      width: 500,
+      width: Math.min(500, (typeof window !== 'undefined' ? window.innerWidth : 1920) - 100),
       height: 'auto',
-      classes: ['archetype-manager-dialog']
+      classes: ['archetype-manager-dialog'],
+      resizable: true
     });
 
     dialogInstance.render(true);
@@ -548,9 +549,10 @@ export class UIManager {
           }
         }
       }, {
-        width: 550,
+        width: Math.min(550, (typeof window !== 'undefined' ? window.innerWidth : 1920) - 100),
         height: 'auto',
-        classes: ['archetype-manager', 'archetype-preview-dialog']
+        classes: ['archetype-manager', 'archetype-preview-dialog'],
+        resizable: true
       });
 
       dialog.render(true);

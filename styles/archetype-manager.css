@@ -7,12 +7,26 @@
 
 /* === Main Dialog === */
 .archetype-manager-dialog {
-  min-width: 450px;
+  min-width: 320px;
+  max-width: 90vw;
   max-height: 80vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .archetype-manager-dialog .dialog-content {
   padding: 8px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.archetype-manager-dialog .dialog-buttons {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #f0f0e0);
+  z-index: 1;
 }
 
 /* === Class Selector === */
@@ -45,7 +59,7 @@
 
 /* === Archetype List === */
 .archetype-manager-dialog .archetype-list {
-  max-height: 400px;
+  max-height: min(400px, 40vh);
   overflow-y: auto;
   border: 1px solid var(--color-border-light-1, #999);
   border-radius: 3px;
@@ -224,4 +238,58 @@
 .archetype-manager [data-tooltip] {
   position: relative;
   cursor: help;
+}
+
+/* === Preview Dialog Scrollable === */
+.archetype-preview-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  max-width: 90vw;
+}
+
+.archetype-preview-dialog .dialog-content {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.archetype-preview-dialog .dialog-buttons {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg, #f0f0e0);
+  z-index: 1;
+}
+
+/* === Responsive: Small screens (1024x768 and below) === */
+@media (max-width: 1100px) {
+  .archetype-manager-dialog {
+    min-width: 320px;
+    max-width: 95vw;
+  }
+
+  .archetype-manager-dialog .archetype-list {
+    max-height: min(300px, 35vh);
+  }
+
+  .archetype-preview-dialog {
+    min-width: 400px;
+    max-width: 95vw;
+  }
+}
+
+/* === Responsive: Very small viewport height === */
+@media (max-height: 800px) {
+  .archetype-manager-dialog {
+    max-height: 85vh;
+  }
+
+  .archetype-manager-dialog .archetype-list {
+    max-height: min(250px, 30vh);
+  }
+
+  .archetype-preview-dialog {
+    max-height: 85vh;
+  }
 }
