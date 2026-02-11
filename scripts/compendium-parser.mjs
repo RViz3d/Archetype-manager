@@ -163,19 +163,21 @@ export class CompendiumParser {
 
   /**
    * Resolve all UUIDs in a classAssociations array
+   * Uses Promise.all for efficient batch resolution
    * @param {Array} associations - classAssociations array
    * @returns {Array} Associations with resolved names
    */
   static async resolveAssociations(associations) {
-    const resolved = [];
-    for (const assoc of associations) {
-      const name = await this.resolveUUID(assoc.uuid || assoc.id);
-      resolved.push({
-        ...assoc,
-        resolvedName: name
-      });
-    }
-    return resolved;
+    if (!associations || associations.length === 0) return [];
+
+    const resolvedNames = await Promise.all(
+      associations.map(assoc => this.resolveUUID(assoc.uuid || assoc.id))
+    );
+
+    return associations.map((assoc, i) => ({
+      ...assoc,
+      resolvedName: resolvedNames[i]
+    }));
   }
 
   /**
