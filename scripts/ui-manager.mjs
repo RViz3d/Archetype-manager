@@ -1105,7 +1105,7 @@ export class UIManager {
             <button type="button" class="remove-feature-btn" data-index="0" title="Remove" style="flex:0 0 30px; cursor:pointer;">✕</button>
           </div>
         </div>
-        <button type="button" class="add-feature-btn" style="margin-top: 4px; cursor: pointer;">
+        <button type="button" class="add-feature-btn" title="Add another feature row" style="margin-top: 4px; cursor: pointer;">
           <i class="fas fa-plus"></i> Add Feature
         </button>
       </form>
