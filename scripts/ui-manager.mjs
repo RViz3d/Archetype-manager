@@ -474,16 +474,27 @@ export class UIManager {
         render: (html) => {
           const element = html[0] || html;
 
-          // Wire up editable level fields
+          // Wire up editable level fields with validation
           const levelInputs = element.querySelectorAll('.preview-level-input');
           if (levelInputs) {
             levelInputs.forEach(input => {
               input.addEventListener('change', () => {
                 const idx = parseInt(input.dataset.index);
-                const newLevel = parseInt(input.value);
-                if (!isNaN(idx) && !isNaN(newLevel) && diff[idx]) {
-                  diff[idx].level = newLevel;
+                if (isNaN(idx) || !diff[idx]) return;
+
+                const validation = UIManager._validatePreviewLevel(input.value);
+
+                if (!validation.valid) {
+                  // Reject invalid value: reset to original and warn
+                  input.value = diff[idx].level || '';
+                  input.classList.add('invalid-level');
+                  ui.notifications.warn(`${MODULE_TITLE} | ${validation.error}`);
+                  return;
                 }
+
+                // Valid level: update diff and clear any error styling
+                input.classList.remove('invalid-level');
+                diff[idx].level = validation.level;
               });
             });
           }
@@ -1026,6 +1037,29 @@ export class UIManager {
    * @param {string} name - The archetype name
    * @returns {string} URL-friendly slug
    */
+  /**
+   * Validate a level value for the preview dialog
+   * @param {string|number} value - The level value to validate
+   * @returns {{ valid: boolean, level: number|null, error: string|null }}
+   */
+  static _validatePreviewLevel(value) {
+    const str = String(value ?? '').trim();
+    if (!str || str === '') {
+      return { valid: false, level: null, error: 'Level is required.' };
+    }
+    const level = parseInt(str);
+    if (isNaN(level)) {
+      return { valid: false, level: null, error: 'Level must be a number.' };
+    }
+    if (level < 1) {
+      return { valid: false, level: null, error: 'Level must be at least 1.' };
+    }
+    if (level > 20) {
+      return { valid: false, level: null, error: 'Level must be at most 20.' };
+    }
+    return { valid: true, level, error: null };
+  }
+
   static _slugify(name) {
     return name
       .toLowerCase()
