@@ -60,7 +60,14 @@ export class JournalEntryDB {
     if (!page) return {};
 
     try {
-      return JSON.parse(page.text.content || '{}');
+      const parsed = JSON.parse(page.text.content || '{}');
+      // Ensure we always return a plain object (handles JSON null, arrays, primitives)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        console.warn(`${MODULE_ID} | Unexpected JSON type in ${section} section, resetting to empty object`);
+        await page.update({ 'text.content': '{}' });
+        return {};
+      }
+      return parsed;
     } catch (e) {
       console.warn(`${MODULE_ID} | Corrupted JSON in ${section} section, resetting to empty`);
       ui.notifications.warn(`Archetype Manager: Corrupted data in ${section} section was reset.`);
