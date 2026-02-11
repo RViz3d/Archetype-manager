@@ -1045,3 +1045,47 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #15: 30/30, Feature #12: 30/30
 
 **Current Status:** 59/100 features passing (59.0%)
+
+### Session (2025-02-11) - Feature #32
+
+**Accomplished:**
+- Feature #32 (Validate archetype applies to correct class): PASSED
+  - Implemented class validation in Applicator.apply() (was a TODO placeholder)
+  - Added ConflictChecker import and validateClass() call before backup creation
+  - Fighter archetype blocked when applied to Wizard -> returns false with clear error
+  - Error message format: "ArchName is a Class archetype and cannot be applied to ClassName"
+  - No classAssociations, backup flags, archetype tracking, chat messages, or actor flags created on mismatch
+  - Fighter archetype blocked on Rogue, Wizard archetype blocked on Fighter
+  - Rogue archetype works on Rogue, Fighter archetype works on Fighter
+  - Class validation is case-insensitive and trims whitespace
+  - Matches by system.tag OR class name
+  - Archetypes without class field skip validation (legacy/custom compatibility)
+  - Multi-class actors: validation only against the specific classItem being targeted
+  - Error is error-level notification (not warn)
+  - 40/40 tests passing (test/test-feature-32.mjs)
+
+**Code Changes:**
+- scripts/applicator.mjs:
+  - Added import of ConflictChecker
+  - Replaced TODO comment with actual class validation logic
+  - Uses ConflictChecker.validateClass() to check class match
+  - Skips validation when parsedArchetype.class is falsy (empty/null/undefined)
+- test/test-feature-32.mjs: New test suite (40 tests)
+  - 10 ConflictChecker.validateClass unit tests
+  - 9 Applicator.apply wrong-class blocking tests
+  - 4 correct-class success tests
+  - 2 missing/empty class field tests
+  - 3 multiple class scenario tests
+  - 6 edge case tests (case sensitivity, whitespace, no side effects)
+  - 2 tag vs name matching tests
+  - 2 multi-class actor tests
+  - 2 error message clarity tests
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #38: 44/44, Feature #37: 38/38, Feature #43: 40/40
+  - Feature #30: 36/36, Feature #44: 51/51, Feature #41: 56/56
+  - Feature #29: 26/26
+
+**Current Status:** 59/100 features passing (59.0%)
