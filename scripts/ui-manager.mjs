@@ -61,7 +61,7 @@ export class UIManager {
             <i class="fas fa-spinner fa-spin"></i>
             <span>Loading archetypes...</span>
           </div>
-          <div class="archetype-list">
+          <div class="archetype-list" role="listbox" aria-label="Available archetypes">
             <div class="empty-state">Select a class to view available archetypes</div>
           </div>
         </div>
@@ -300,7 +300,9 @@ export class UIManager {
 
           if (filtered.length === 0) {
             archetypeListEl.innerHTML = `<div class="empty-state">
-              ${searchTerm ? 'No matching archetypes found' : 'No archetypes available for this class'}
+              ${searchTerm
+                ? `<i class="fas fa-search" style="margin-right:4px;"></i>No matching archetypes found for "<strong>${searchTerm}</strong>".<br><small>Try a different search term or clear the search to see all archetypes.</small>`
+                : 'No archetypes available for this class'}
             </div>`;
             return;
           }
@@ -332,7 +334,7 @@ export class UIManager {
               }
             }
 
-            return `<div class="archetype-item${appliedClass}${selectedClass}" data-slug="${arch.slug}" data-source="${arch.source}" data-has-conflict="${hasConflict}">
+            return `<div class="archetype-item${appliedClass}${selectedClass}" data-slug="${arch.slug}" data-source="${arch.source}" data-has-conflict="${hasConflict}" tabindex="0" role="option" aria-selected="${dialogSelectedArchetypes.has(arch.slug) ? 'true' : 'false'}">
               <span class="archetype-name">${arch.name}</span>
               <span class="archetype-indicators">
                 ${conflictWarning}
@@ -345,8 +347,15 @@ export class UIManager {
             </div>`;
           }).join('');
 
-          // Add click handlers for archetype items
+          // Add click and keyboard handlers for archetype items
           archetypeListEl.querySelectorAll('.archetype-item').forEach(item => {
+            // Keyboard support: Enter/Space to select archetype
+            item.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
+              }
+            });
             item.addEventListener('click', (e) => {
               // Don't trigger on info button clicks
               if (e.target.closest('.info-btn')) return;
@@ -1373,12 +1382,13 @@ export class UIManager {
   /**
    * Prevent double-click actions
    * @param {Function} fn - The function to guard
+   * @returns {*} The result of fn, or undefined if already processing
    */
   static async guardAction(fn) {
     if (this._processing) return;
     this._processing = true;
     try {
-      await fn();
+      return await fn();
     } finally {
       this._processing = false;
     }
