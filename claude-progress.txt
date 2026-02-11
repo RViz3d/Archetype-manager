@@ -86,3 +86,52 @@
 - lang/en.json - English localization
 - test/foundry-mock.mjs - Mock FoundryVTT environment for testing
 - test/test-features-1-2-3.mjs - Test suite for features 1-3
+- test/test-features-21-23-24.mjs - Test suite for features 21, 23, 24
+
+### Session 3 (2025-02-11)
+
+**Accomplished:**
+- Feature #21 (CRUD operations on JE fixes section): PASSED
+  - Create fix entry with archetype data (two-handed-fighter example)
+  - Read fixes section and verify entry fields
+  - Update entry (change level, add new feature)
+  - Read and verify update applied correctly
+  - Delete entry from fixes section
+  - Verify deletion completed (both readSection and getArchetype)
+  - Verify all ops use JournalEntryPage.update()
+  - Verify no data corruption after multiple CRUD operations
+  - Verify getArchetype returns fix entry from fixes section
+
+- Feature #23 (CRUD operations on JE custom section): PASSED
+  - Create custom homebrew entry (shield-master example)
+  - Read custom section and verify entry fields
+  - Update feature list (add, modify, remove features)
+  - Delete custom entry and verify removal
+  - Verify players CAN write to custom section
+  - Verify players CANNOT write to fixes section (GM-only)
+  - Verify players CANNOT write to missing section (GM-only)
+  - Multiple custom entries coexist without interference
+
+- Feature #24 (JE data validation handles corrupted JSON): PASSED
+  - Set JE page content to invalid JSON string
+  - readSection does not crash on corrupted JSON
+  - readSection returns empty object for corrupted JSON
+  - Corrupted page is reset to valid empty JSON after read
+  - Warning notification shown for corrupted JSON
+  - Subsequent reads after recovery return clean data
+  - Handles empty string content gracefully
+  - Handles null-like JSON content gracefully (new validation added)
+  - Handles array JSON content gracefully (new validation added)
+  - Handles primitive JSON content gracefully (new validation added)
+  - Handles various corrupted formats (undefined, incomplete, HTML, XML, JS)
+  - Recovery does not affect other sections
+  - Invalid section name throws proper error
+  - Data persists across simulated reload after corruption recovery
+
+**Code Changes:**
+- scripts/journal-db.mjs: Hardened readSection() to validate JSON type
+  - Added check for null, arrays, and primitives from JSON.parse
+  - Resets to empty object with console warning for non-object types
+- test/test-features-21-23-24.mjs: New test suite - 33/33 tests passing
+
+**Current Status:** 8/100 features passing (Features #1, #2, #3, #4, #5, #21, #23, #24)
