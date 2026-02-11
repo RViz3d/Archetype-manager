@@ -477,3 +477,74 @@
 (Features #1-11, #13-14, #16-17, #21-24, #27, #48-50, #62, #75, #89)
 
 **All tests passing:** 515 total tests across all test suites (zero regressions)
+
+### Session 10 (2025-02-11)
+
+**Accomplished:**
+- Feature #25 (On-the-fly fix dialog UI works): PASSED
+  - Implemented showFixDialog method in ui-manager.mjs
+  - Dialog shows feature name and raw description
+  - Dropdown with base class features sorted by level with (Lv N) display
+  - "Is additive" checkbox disables/enables dropdown
+  - Level input pre-populated from feature, user-editable
+  - Save Fix → creates/updates JE fixes entry with feature slug
+  - Cancel → resolves null, nothing saved
+  - Added _buildFixDialogHTML, _parseFixDialogResult helpers
+  - Multiple fixes for same archetype coexist
+  - Handles empty/null/undefined base features gracefully
+  - Handles missing feature properties gracefully
+  - Fix data persists across reload
+  - GM-only access enforced for fixes section
+  - 59/59 tests passing (test/test-feature-25.mjs)
+
+- Feature #26 (Description verification dialog works): PASSED
+  - Implemented showDescriptionVerifyDialog in ui-manager.mjs
+  - Displays raw HTML description in scrollable container
+  - Provides correction textarea with monospace font
+  - Auto-strips HTML formatting on paste via _stripHTML helper
+  - _stripHTML uses DOMParser when available, regex fallback
+  - Handles HTML entities (&amp; &lt; &gt; etc.)
+  - Save Correction → saves corrected description to JE fixes
+  - Preserves existing fix entry fields (level, replaces) when updating description
+  - Cancel → resolves null, nothing saved
+  - Multiple feature corrections coexist for same archetype
+  - Data persists across reload
+  - 48/48 tests passing (test/test-feature-26.mjs)
+
+- Feature #28 (Manual entry for custom/homebrew archetypes): PASSED
+  - Custom type selected by default in manual entry dialog
+  - Full form with archetype name, class, dynamic feature rows
+  - Additive features supported (empty replaces = null)
+  - Multiple features per archetype validated and saved
+  - Saves to JE custom section via JournalEntryDB.setArchetype
+  - Multiple custom archetypes coexist
+  - Custom entries readable and displayable in selection list
+  - Non-GM can save to custom section
+  - Non-GM cannot save to missing section
+  - Full validation: empty names, empty class, no features, invalid levels, duplicates
+  - _slugify generates correct URL-friendly slugs
+  - Custom data persists across reload
+  - Delete custom archetype works without affecting others
+  - getArchetype returns custom entries with correct _section
+  - 69/69 tests passing (test/test-feature-28.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs:
+  - Implemented showFixDialog method (replaces TODO)
+  - Added _buildFixDialogHTML, _parseFixDialogResult helpers
+  - Implemented showDescriptionVerifyDialog method (replaces TODO)
+  - Added _buildDescriptionVerifyHTML, _stripHTML helpers
+  - Changed globalThis.clipboardData to window.clipboardData in paste handler
+- test/test-feature-25.mjs: New test suite (59 tests)
+- test/test-feature-26.mjs: New test suite (48 tests)
+- test/test-feature-28.mjs: New test suite (69 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (26/26, 33/33)
+- Zero regressions
+
+**Current Status:** 29/100 features passing
+(Features #1-11, #13-14, #16-17, #21-28, #48-50, #62, #75, #89)
+
+**All tests passing:** 691 total tests across all test suites (zero regressions)
