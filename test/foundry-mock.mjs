@@ -5,6 +5,35 @@
  * so we can test module logic without a running Foundry instance.
  */
 
+// Set up jsdom for DOM support in Node.js
+let _jsdomSetup = false;
+async function ensureDOM() {
+  if (_jsdomSetup) return;
+  if (typeof document === 'undefined') {
+    try {
+      const { JSDOM } = await import('jsdom');
+      const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+        url: 'http://localhost',
+        pretendToBeVisual: true
+      });
+      globalThis.window = dom.window;
+      globalThis.document = dom.window.document;
+      globalThis.HTMLElement = dom.window.HTMLElement;
+      globalThis.Event = dom.window.Event;
+      globalThis.DOMParser = dom.window.DOMParser;
+      globalThis.Node = dom.window.Node;
+      globalThis.NodeList = dom.window.NodeList;
+      _jsdomSetup = true;
+    } catch (e) {
+      // jsdom not available, DOM tests will be limited
+      console.warn('jsdom not available, DOM-dependent tests may fail');
+    }
+  }
+}
+
+// Initialize DOM eagerly
+await ensureDOM();
+
 // In-memory storage for persistence testing
 const storage = {
   journals: new Map(),
