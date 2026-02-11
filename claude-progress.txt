@@ -1166,3 +1166,46 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Features #1-3: 26/26, Feature #6: 108/108, Feature #33: 43/43
 
 **Current Status:** 64/100 features passing (64.0%)
+
+### Session (2025-02-11) - Feature #54
+
+**Accomplished:**
+- Feature #54 (Add archetype button opens manual entry dialog): PASSED
+  - Main dialog has "Add Archetype" button with fa-plus icon and async callback
+  - Clicking "Add Archetype" calls showManualEntryDialog('custom'), creating a new dialog
+  - Manual entry dialog has correct title containing "Add Archetype"
+  - Type selector with "Official Missing" and "Custom / Homebrew" options
+  - Default type is "custom" when opened from main dialog's Add Archetype button
+  - Archetype name field with placeholder and required attribute
+  - Class field with placeholder and required attribute
+  - Feature rows section with name, level, and replaces fields per row
+  - Add Feature button and remove button per row
+  - Save button (fa-save) and Cancel button (fa-times)
+  - Form wrapped in <form> tag with autocomplete="off"
+  - Render callback for interactivity (add/remove feature rows)
+  - Non-GM blocked from opening "missing" type (returns null with error)
+  - Cancel and close both return null (no data saved)
+  - _validateManualEntry: rejects empty name, empty class, no features, invalid levels, duplicates
+  - _validateManualEntry: accepts valid entries, generates slugs, handles null replaces
+  - Full integration flow verified: main dialog → Add Archetype → manual entry dialog
+  - Multi-class actor support verified
+  - 54/54 tests passing (test/test-feature-54.mjs)
+
+**Code Changes:**
+- test/test-feature-54.mjs: New test suite (54 tests)
+  - Section 1-3: Main dialog button presence & manual dialog creation (10 tests)
+  - Section 4-6: Name, class, feature row fields verification (11 tests)
+  - Section 7-8: Save/Cancel buttons & showManualEntryDialog behavior (7 tests)
+  - Section 9-10: Form structure & _buildManualEntryHTML (8 tests)
+  - Section 11: _validateManualEntry validation (11 tests)
+  - Section 12-13: Close behavior & integration tests (5 tests)
+
+**Verification:**
+- No production code changes needed (all functionality already implemented)
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Features #51,#52,#53: 34/34 passing
+  - Feature #55: 36/36 passing
+  - Features #34,#35,#36: 94/94 passing
+
+**Current Status:** 62/100 features passing (62.0%)
