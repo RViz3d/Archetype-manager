@@ -1349,3 +1349,57 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #32: 40/40
 
 **Current Status:** 74/100 features passing (74.0%)
+
+### Session (2025-02-11) - Features #68, #69
+
+**Accomplished:**
+- Feature #68 (Main dialog opens from macro on hotbar): PASSED
+  - All 41 existing tests pass without any changes needed
+  - Module API accessible via game.modules.get('archetype-manager').api
+  - api.open() works as a callable function from macro
+  - Standard macro script game.modules.get('archetype-manager').api.open() verified
+  - Warning shown when no token selected, no classes, no actor
+  - Dialog opens and positions correctly for valid tokens
+  - Multi-class actors supported
+  - Repeated calls don't crash
+  - 41/41 tests passing (test/test-feature-68.mjs)
+
+- Feature #69 (Dialog flow: main -> preview -> confirm -> apply): PASSED
+  - showPreviewDialog: returns promise, shows diff table, Apply/Back buttons
+  - Diff table shows removed (Bravery), added (Shattering Strike/Overhand Chop), unchanged features
+  - Status icons: fa-times (removed), fa-plus (added), fa-check (unchanged), fa-pen (modified)
+  - showConfirmation: Confirm returns true, Cancel returns false, X close returns false
+  - showPreviewConfirmFlow: full loop preview->apply->confirm returns 'applied'
+  - Back navigation: preview->back returns 'back-to-main'
+  - Cancel navigation: preview->confirm(cancel)->preview->back works correctly
+  - Close via X: returns null at any point
+  - Applicator.apply integration: success notification, tracking flags, chat message, actor flags
+  - classAssociations reflect UUID slot reuse for replacements (correct PF1e behavior)
+  - DiffEngine produces correct diff sorted by level
+  - Preview HTML has table structure, editable levels, info buttons
+  - Duplicate application prevented (returns false with warning)
+  - Permission check blocks unauthorized users
+  - Wrong class archetype blocked with clear error
+  - Empty diff shows "No changes detected" message
+  - Full E2E: diff -> preview -> confirm -> apply -> verify state
+  - 109/109 tests passing (test/test-feature-69.mjs)
+
+**Code Changes:**
+- test/test-feature-69.mjs: Updated test suite (109 tests) - Full dialog flow verification
+  - Section 1: Preview dialog behavior (6 tests)
+  - Section 2: Confirmation dialog (3 tests)
+  - Section 3: Preview-Confirm flow navigation (4 tests)
+  - Section 4: Full Applicator.apply integration (5 tests)
+  - Section 5: DiffEngine verification (3 tests)
+  - Section 6: Preview HTML content (4 tests)
+  - Section 7: Confirm dialog content (1 test)
+  - Section 8: Duplicate prevention (1 test)
+  - Section 9: Error handling (2 tests)
+  - Section 10-13: Styling, edge cases, navigation, E2E integration
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #68: 41/41, Feature #38: 44/44, Feature #42: 39/39
+
+**Current Status:** 74/100 features passing (74.0%)
