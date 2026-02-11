@@ -125,7 +125,7 @@
 
 /* === Conflict Warning === */
 .archetype-manager .conflict-warning {
-  color: #d4a017;
+  color: #da0;
 }
 
 .archetype-manager .conflict-warning i {
@@ -252,6 +252,7 @@
   overflow-y: auto;
   flex: 1 1 auto;
   min-height: 0;
+  padding: 8px;
 }
 
 .archetype-preview-dialog .dialog-buttons {
@@ -260,6 +261,107 @@
   bottom: 0;
   background: var(--color-bg, #f0f0e0);
   z-index: 1;
+}
+
+/* === Preview Diff Table - Long Feature Lists === */
+.archetype-preview-content {
+  overflow-x: hidden;
+}
+
+.preview-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.preview-diff-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg, #f0f0e0);
+}
+
+.preview-diff-table thead th {
+  padding: 6px 8px;
+  border-bottom: 2px solid #ccc;
+  font-weight: bold;
+  font-size: 0.85em;
+  text-align: left;
+}
+
+.preview-diff-table tbody tr {
+  border-bottom: 1px solid var(--color-border-light-2, #ddd);
+}
+
+.preview-diff-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.preview-diff-table td {
+  padding: 4px 8px;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status column - fixed narrow width, centered icon */
+.preview-diff-table td:nth-child(1),
+.preview-diff-table th:nth-child(1) {
+  width: 40px;
+  text-align: center;
+}
+
+/* Level column - fixed narrow width */
+.preview-diff-table td:nth-child(2),
+.preview-diff-table th:nth-child(2) {
+  width: 60px;
+  text-align: center;
+}
+
+/* Feature name column - flexible width */
+.preview-diff-table td:nth-child(3),
+.preview-diff-table th:nth-child(3) {
+  width: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Action column - fixed width */
+.preview-diff-table td:nth-child(4),
+.preview-diff-table th:nth-child(4) {
+  width: 80px;
+  text-align: right;
+}
+
+/* Preview row status colors */
+.preview-row.preview-removed {
+  background: rgba(204, 0, 0, 0.06);
+}
+
+.preview-row.preview-added {
+  background: rgba(0, 136, 255, 0.06);
+}
+
+.preview-row.preview-modified {
+  background: rgba(255, 136, 0, 0.06);
+}
+
+.preview-row.preview-unchanged {
+  background: transparent;
+}
+
+/* Level input in preview table */
+.preview-level-input {
+  width: 50px;
+  text-align: center;
+  border: 1px solid var(--color-border-light-1, #999);
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.preview-level-input.invalid-level {
+  border-color: #c00;
+  background: rgba(204, 0, 0, 0.1);
 }
 
 /* === Responsive: Small screens (1024x768 and below) === */
