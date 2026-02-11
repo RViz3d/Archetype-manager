@@ -1895,3 +1895,38 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #43: 40/40, Feature #82: 25/25, Feature #93: 35/35
 
 **Current Status:** 94/100 features passing (94.0%)
+
+### Session (2025-02-11) - Feature #97
+
+**Accomplished:**
+- Feature #97 (AppliedAt timestamp is accurate): PASSED
+  - appliedAt flag is set after successful archetype application (not null, not empty)
+  - appliedAt flag is a string type
+  - appliedAt not set before application (clean initial state)
+  - Timestamp accuracy: within 5 seconds of noted time (before and after)
+  - Records accurate current time, not hardcoded or stale
+  - Valid ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ (Date.toISOString() format)
+  - Contains T separator, ends with Z (UTC timezone)
+  - Parseable by new Date(), valid date components (month, day, hours, etc.)
+  - Roundtrips to same value via Date constructor
+  - Convertible to Unix ms (Date.parse and getTime agree)
+  - Works with different class types (Fighter, Rogue)
+  - Updates when second archetype is applied (fresh timestamp each time)
+  - Cleared when last archetype removed, persists when one of two removed
+  - Not set on failed applications (duplicate, permission denied, wrong class)
+  - Unix ms convertible and within valid range
+  - Consistent format across multiple calls, no undefined/null/NaN in value
+  - JSON-serializable for flag storage
+  - Re-apply after remove records fresh (later) timestamp
+  - Full E2E: note time → apply → read flag → verify accuracy and format
+  - 36/36 tests passing (test/test-feature-97.mjs)
+
+**Code Changes:**
+- test/test-feature-97.mjs: New test suite (36 tests) - AppliedAt timestamp accuracy
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #94: 37/37, Feature #92: 35/35, Features #1-3: 26/26
+
+**Current Status:** 97/100 features passing (97.0%)
