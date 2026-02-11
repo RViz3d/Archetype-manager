@@ -309,10 +309,156 @@ export class UIManager {
    * @param {Item} classItem - The class item
    * @param {object} parsedArchetype - Parsed archetype data
    * @param {Array} diff - The generated diff
+   * @returns {Promise<string>} 'apply' to proceed, 'back' to go back, null if cancelled
    */
   static async showPreviewDialog(actor, classItem, parsedArchetype, diff) {
-    // TODO: Implement preview dialog
-    console.log(`${MODULE_ID} | Preview dialog for:`, parsedArchetype.name);
+    const content = this._buildPreviewHTML(parsedArchetype, diff);
+
+    return new Promise(resolve => {
+      const dialog = new Dialog({
+        title: `${MODULE_TITLE} - Preview: ${parsedArchetype.name}`,
+        content,
+        buttons: {
+          apply: {
+            icon: '<i class="fas fa-check"></i>',
+            label: 'Apply',
+            callback: () => resolve('apply')
+          },
+          back: {
+            icon: '<i class="fas fa-arrow-left"></i>',
+            label: 'Back',
+            callback: () => resolve('back')
+          }
+        },
+        default: 'back',
+        close: () => resolve(null),
+        render: (html) => {
+          const element = html[0] || html;
+
+          // Wire up editable level fields
+          const levelInputs = element.querySelectorAll('.preview-level-input');
+          if (levelInputs) {
+            levelInputs.forEach(input => {
+              input.addEventListener('change', () => {
+                const idx = parseInt(input.dataset.index);
+                const newLevel = parseInt(input.value);
+                if (!isNaN(idx) && !isNaN(newLevel) && diff[idx]) {
+                  diff[idx].level = newLevel;
+                }
+              });
+            });
+          }
+        }
+      }, {
+        width: 550,
+        height: 'auto',
+        classes: ['archetype-manager', 'archetype-preview-dialog']
+      });
+
+      dialog.render(true);
+    });
+  }
+
+  /**
+   * Build HTML content for the preview/diff dialog
+   * @param {object} parsedArchetype - Parsed archetype data
+   * @param {Array} diff - The generated diff
+   * @returns {string} HTML content
+   */
+  static _buildPreviewHTML(parsedArchetype, diff) {
+    const statusIcons = {
+      unchanged: { icon: 'fa-check', color: '#080', label: 'Unchanged' },
+      removed: { icon: 'fa-times', color: '#c00', label: 'Removed' },
+      added: { icon: 'fa-plus', color: '#08f', label: 'Added' },
+      modified: { icon: 'fa-pen', color: '#f80', label: 'Modified' }
+    };
+
+    const rows = (diff || []).map((entry, idx) => {
+      const info = statusIcons[entry.status] || statusIcons.unchanged;
+      const levelEditable = entry.status === 'added' || entry.status === 'modified';
+
+      return `<tr class="preview-row preview-${entry.status}">
+        <td style="text-align:center;">
+          <span class="status-icon" title="${info.label}" style="color:${info.color};">
+            <i class="fas ${info.icon}"></i>
+          </span>
+        </td>
+        <td>
+          ${levelEditable
+            ? `<input type="number" class="preview-level-input" data-index="${idx}" value="${entry.level || ''}" min="1" max="20" style="width:50px;text-align:center;" />`
+            : `<span>${entry.level || '?'}</span>`
+          }
+        </td>
+        <td>${entry.name || 'Unknown'}</td>
+        <td style="font-size:0.85em;color:${info.color};">${info.label}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="archetype-preview-content">
+        <h3 style="margin:0 0 8px;">
+          <i class="fas fa-exchange-alt" style="color:#08f;"></i>
+          ${parsedArchetype.name || 'Archetype Preview'}
+        </h3>
+        <p style="font-size:0.9em;color:#666;margin-bottom:8px;">
+          Review the changes this archetype will make to class features.
+          Editable levels can be adjusted before applying.
+        </p>
+        <table class="preview-diff-table" style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid #ccc;">
+              <th style="width:40px;">Status</th>
+              <th style="width:60px;">Level</th>
+              <th>Feature</th>
+              <th style="width:80px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="4" style="text-align:center;color:#666;padding:12px;">No changes detected</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  /**
+   * Orchestrate the preview → confirm → apply flow with back navigation
+   * @param {Actor} actor - The actor
+   * @param {Item} classItem - The class item
+   * @param {object} parsedArchetype - Parsed archetype data
+   * @param {Array} diff - The generated diff
+   * @returns {Promise<string>} 'applied', 'back-to-main', or null if cancelled at any point
+   */
+  static async showPreviewConfirmFlow(actor, classItem, parsedArchetype, diff) {
+    let currentStep = 'preview';
+
+    while (true) {
+      if (currentStep === 'preview') {
+        const previewResult = await this.showPreviewDialog(actor, classItem, parsedArchetype, diff);
+
+        if (previewResult === 'back') {
+          return 'back-to-main';
+        } else if (previewResult === 'apply') {
+          currentStep = 'confirm';
+        } else {
+          // null = closed/escaped
+          return null;
+        }
+      } else if (currentStep === 'confirm') {
+        const confirmed = await this.showConfirmation(
+          'Apply Archetype',
+          `<p>Are you sure you want to apply <strong>${parsedArchetype.name}</strong> to <strong>${classItem.name}</strong>?</p>
+           <p>This will modify the class's feature associations. A backup will be saved for later removal.</p>`
+        );
+
+        if (confirmed) {
+          return 'applied';
+        } else {
+          // Go back to preview
+          currentStep = 'preview';
+        }
+      }
+    }
   }
 
   /**

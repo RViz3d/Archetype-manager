@@ -24,6 +24,12 @@ export class Applicator {
   static async apply(actor, classItem, parsedArchetype, diff) {
     const slug = parsedArchetype.slug;
 
+    // Permission check: players can only modify owned characters
+    if (!game.user.isGM && !actor.isOwner) {
+      ui.notifications.error(`${MODULE_TITLE} | You do not have permission to modify this character.`);
+      return false;
+    }
+
     // Check for duplicate application
     const existingArchetypes = classItem.getFlag(MODULE_ID, 'archetypes') || [];
     if (existingArchetypes.includes(slug)) {
@@ -88,6 +94,12 @@ export class Applicator {
    * @returns {boolean} Success or failure
    */
   static async remove(actor, classItem, slug) {
+    // Permission check: players can only modify owned characters
+    if (!game.user.isGM && !actor.isOwner) {
+      ui.notifications.error(`${MODULE_TITLE} | You do not have permission to modify this character.`);
+      return false;
+    }
+
     try {
       const existingArchetypes = classItem.getFlag(MODULE_ID, 'archetypes') || [];
       if (!existingArchetypes.includes(slug)) {

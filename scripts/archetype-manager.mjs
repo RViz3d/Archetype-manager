@@ -26,6 +26,12 @@ export class ArchetypeManager {
       return;
     }
 
+    // Permission check: players can only modify owned characters
+    if (!game.user.isGM && !actor.isOwner) {
+      ui.notifications.warn(`${MODULE_TITLE} | You do not have permission to modify this character.`);
+      return;
+    }
+
     // Validate actor has class items
     const classItems = actor.items.filter(i => i.type === 'class');
     if (classItems.length === 0) {
