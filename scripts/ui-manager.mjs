@@ -326,7 +326,7 @@ export class UIManager {
               if (conflicts.length > 0) {
                 hasConflict = true;
                 const conflictNames = conflicts.map(c => c.featureName).join(', ');
-                conflictWarning = `<span class="status-icon conflict-warning" title="Conflicts with applied archetype(s): ${conflictNames}" style="color: #f80;">
+                conflictWarning = `<span class="status-icon conflict-warning" title="Conflicts with applied archetype(s): ${conflictNames}" style="color: #da0;">
                   <i class="fas fa-exclamation-triangle"></i>
                 </span>`;
               }
@@ -1346,6 +1346,28 @@ export class UIManager {
       }
     }
     return result;
+  }
+
+  /**
+   * Show confirmation dialog before removing an archetype, then perform the removal
+   * @param {Actor} actor - The actor document
+   * @param {Item} classItem - The class item document
+   * @param {string} slug - The archetype slug to remove
+   * @returns {Promise<boolean>} Whether the removal was performed
+   */
+  static async showRemoveConfirmation(actor, classItem, slug) {
+    const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const confirmed = await this.showConfirmation(
+      'Remove Archetype',
+      `<p>Are you sure you want to remove <strong>${displayName}</strong> from <strong>${classItem.name}</strong>?</p>
+       <p>The original class features will be restored from backup.</p>`
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    return Applicator.remove(actor, classItem, slug);
   }
 
   /**
