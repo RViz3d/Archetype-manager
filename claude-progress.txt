@@ -907,3 +907,55 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
 
 **Current Status:** 52/100 features passing (52.0%)
 (Features #1-19, #21-29, #30-31, #33-38, #43, #48-53, #55, #62, #68, #70-71, #75, #89)
+
+### Session (2025-02-11) - Features #39, #44, #41
+
+**Accomplished:**
+- Feature #39 (Create item copies for modified features): PASSED
+  - Verified copy created on actor for modified features (Weapon Training modification)
+  - Copy name format: "FeatureName (ArchetypeName)"
+  - Copy type is 'feat' with createdByArchetype and isModifiedCopy flags
+  - Description includes "Modified by ArchetypeName:" header + archetype feature description
+  - Fallback to "See archetype description." when description is null
+  - Modified feature entry still linked in classAssociations (original not deleted)
+  - Replacement features do NOT create copies (only modifications)
+  - Multiple modifications create multiple copies
+  - Direct _createModifiedFeatureCopies testing
+  - 44/44 tests passing (test/test-feature-39.mjs)
+
+- Feature #44 (Removal deletes created item copies): PASSED
+  - Apply archetype with modification → copy exists
+  - Remove archetype → copy deleted from actor items
+  - deleteEmbeddedDocuments called with correct copy IDs
+  - Other items (class item, other archetype copies) untouched
+  - Multiple copies deleted on removal
+  - Selective removal: only target archetype copies deleted, others preserved
+  - Replacement-only removal (no copies to delete) works cleanly
+  - Apply-remove-apply-remove cycle is repeatable
+  - Direct _deleteCreatedCopies testing (matching slug, non-matching, empty)
+  - 51/51 tests passing (test/test-feature-44.mjs)
+
+- Feature #41 (Chat message posted after application): PASSED
+  - ChatMessage.create called with HTML content
+  - Message includes archetype name (bold), actor name (bold), class name
+  - Module title header (h3)
+  - Lists replaced features with "Replaced:" label (comma-separated)
+  - Lists added features with "Added:" label
+  - Lists modified features with "Modified:" label
+  - Empty sections omitted (no "Modified" when no modifications)
+  - Well-structured: heading, emphasis, paragraphs
+  - Tested replacement-only, modification-only, additive-only, and full scenarios
+  - 56/56 tests passing (test/test-feature-41.mjs)
+
+**Code Changes:**
+- test/test-feature-39.mjs: New test suite (44 tests) - Item copy creation
+- test/test-feature-44.mjs: New test suite (51 tests) - Item copy deletion
+- test/test-feature-41.mjs: New test suite (56 tests) - Chat message
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #38: 44/44, Feature #43: 40/40
+  - Feature #39: 44/44, Feature #44: 51/51, Feature #41: 56/56
+
+**Current Status:** 57/100 features passing (57.0%)
