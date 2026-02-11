@@ -1763,3 +1763,82 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #77: 40/40, Features #34-36: 94/94
 
 **Current Status:** 92/100 features passing (92.0%)
+
+### Session (2025-02-11) - Features #92, #93
+
+**Accomplished:**
+- Feature #92 (Double-click apply button doesn't duplicate): PASSED
+  - Added _applyInProgress guard to Applicator.apply() with try/finally pattern
+  - Concurrent apply calls rejected with "already in progress" warning
+  - Guard resets properly on both success and error
+  - Rapid double-click simulation: exactly one apply succeeds
+  - No duplicate flags, no duplicate chat messages, no duplicate notifications
+  - Triple-click also handled correctly (only one succeeds)
+  - Sequential applies after guard clears work correctly
+  - UIManager.guardAction updated to return function result
+  - 35/35 tests passing (test/test-feature-92.mjs)
+
+- Feature #93 (Double-click remove doesn't corrupt data): PASSED
+  - Added _removeInProgress guard to Applicator.remove() with try/finally pattern
+  - Concurrent remove calls rejected with "already in progress" warning
+  - Guard resets properly on both success and error
+  - Rapid double-click simulation: exactly one remove succeeds
+  - No data corruption: classAssociations restored correctly, no orphan flags
+  - Actor-level flags cleaned properly after double-click remove
+  - Multi-archetype selective removal with double-click: correct archetype removed
+  - Apply-remove-apply cycle with double-clicks works correctly
+  - Apply and remove guards are independent (don't block each other)
+  - 35/35 tests passing (test/test-feature-93.mjs)
+
+**Code Changes:**
+- scripts/applicator.mjs:
+  - Added _applyInProgress static guard flag
+  - Added _removeInProgress static guard flag
+  - Refactored apply() to wrap _doApply() with guard
+  - Refactored remove() to wrap _doRemove() with guard
+  - Both guards use try/finally to ensure reset on error
+  - Warning notification shown when guard blocks operation
+- scripts/ui-manager.mjs:
+  - Updated guardAction() to return function result
+- test/test-feature-92.mjs: New test suite (35 tests)
+- test/test-feature-93.mjs: New test suite (35 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #38: 44/44, Feature #43: 40/40
+  - Feature #67: 40/40, Feature #69: 109/109
+  - Feature #81: 33/33, Feature #82: 25/25
+
+**Current Status:** 91/100 features passing (91.0%)
+
+### Session (2025-02-11) - Feature #96
+
+**Accomplished:**
+- Feature #96 (Manual entry type defaults to custom): PASSED
+  - _buildManualEntryHTML defaults to 'custom' parameter
+  - Custom option has selected attribute when defaultType='custom'
+  - Missing option does NOT have selected when custom is default
+  - Select element has exactly 2 options: Official Missing and Custom/Homebrew
+  - Can switch from custom to missing and back
+  - Switching type doesn't affect other form fields
+  - Validation reads current entry type correctly after user switch
+  - showManualEntryDialog with no args defaults to custom
+  - showManualEntryDialog('custom') and ('missing') both work correctly for GM
+  - Reopening dialog always resets to custom default (no state persistence between opens)
+  - Non-GM user: missing option disabled, custom forced, cannot open with missing default
+  - GM user: both options available, missing option NOT disabled
+  - Validation preserves type in data (custom, missing, and after user switch)
+  - Entry type does not persist in any global state
+  - After environment reset, default is still custom
+  - 38/38 tests passing (test/test-feature-96.mjs)
+
+**Code Changes:**
+- test/test-feature-96.mjs: New test suite (38 tests) - Manual entry type defaults to custom
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #76: 24/24, Feature #61: 42/42, Feature #85: 50/50
+
+**Current Status:** 94/100 features passing (94.0%)
