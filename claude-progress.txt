@@ -1608,3 +1608,63 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Features #56,#57,#58: 36/36, Feature #54: 54/54
 
 **Current Status:** 81/100 features passing (81.0%)
+
+### Session (2025-02-11) - Features #83, #84, #85
+
+**Accomplished:**
+- Feature #83 (Main dialog sizes correctly on various resolutions): PASSED
+  - Added responsive CSS: max-width: 90vw, max-height: 80vh, flex column layout
+  - Dialog buttons use position: sticky + flex-shrink: 0 (close always visible)
+  - Archetype list max-height scales via min(400px, 40vh)
+  - Media queries for small screens (1100px) and short viewports (800px)
+  - Dialog width adapts via Math.min(500, window.innerWidth - 100) for narrow viewports
+  - Both main and preview dialogs are resizable: true
+  - 42/42 tests passing (test/test-feature-83.mjs)
+
+- Feature #84 (Preview dialog handles long feature lists): PASSED
+  - Added CSS for preview-diff-table: table-layout: fixed, sticky thead
+  - Column widths: Status 40px, Level 60px, Feature auto, Action 80px
+  - overflow-x: hidden on preview content, word-wrap: break-word on name column
+  - Preview rows with status-specific background colors
+  - Level input styling with .invalid-level validation class
+  - Tested with 7, 10, 15, 20, 30+ feature archetypes
+  - Status icons aligned, level fields accessible, no horizontal overflow
+  - 48/48 tests passing (test/test-feature-84.mjs)
+
+- Feature #85 (Dialog styling follows FoundryVTT design language): PASSED
+  - Added FoundryVTT design language foundation CSS
+  - Font: Signika (primary), system-ui fallback - all dialogs covered
+  - Base font-size: 14px, line-height: 1.4, input font-size: 13px
+  - Form elements styled with FoundryVTT CSS variables (border, background, color)
+  - Focus states with border-highlight and box-shadow
+  - Labels: font-weight bold, headings: h3 16px, h4 14px
+  - Color scheme: --color-text-dark-primary (#191813), --color-bg (#f0f0e0)
+  - All CSS variables have fallback values
+  - All dialog selectors namespaced (no global selectors)
+  - All 5+ dialog types share consistent button pattern (icon + label)
+  - All dialogs include MODULE_TITLE prefix in title
+  - 50/50 tests passing (test/test-feature-85.mjs)
+
+**Code Changes:**
+- styles/archetype-manager.css: Major update
+  - Added FoundryVTT design language foundation section
+  - Added responsive dialog sizing (flex layout, sticky buttons, viewport constraints)
+  - Added preview diff table CSS (fixed layout, sticky thead, column widths)
+  - Added preview row status colors and level input styling
+  - Added responsive media queries for small screens/viewports
+  - Input, select, label, heading, hr styling with FoundryVTT variables
+- scripts/ui-manager.mjs:
+  - Updated main dialog width to Math.min(500, window.innerWidth - 100)
+  - Updated preview dialog width similarly
+  - Both dialogs now have resizable: true
+- test/test-feature-83.mjs: New test suite (42 tests) - responsive dialog sizing
+- test/test-feature-84.mjs: New test suite (48 tests) - long feature list handling
+- test/test-feature-85.mjs: New test suite (50 tests) - FoundryVTT design consistency
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #48: 18/18, Feature #69: 109/109, Feature #61: 42/42
+  - Feature #54: 54/54, Feature #77: 40/40
+
+**Current Status:** 87/100 features passing (87.0%)
