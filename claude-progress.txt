@@ -1447,3 +1447,56 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Features #21-23-24: passing
 
 **Current Status:** 78/100 features passing (78.0%)
+
+### Session (2025-02-11) - Features #76, #77
+
+**Accomplished:**
+- Feature #76 (No duplicate feature names in manual entry): PASSED
+  - Exact duplicate "Bonus Feat" names at different levels rejected
+  - Duplicate error message includes the duplicated feature name
+  - Exactly one duplicate error for two identical names
+  - Renaming duplicate to unique name allows submission
+  - Case-insensitive duplicate detection ("bonus feat" vs "Bonus Feat")
+  - Mixed case ("BONUS FEAT" vs "Bonus Feat") detected
+  - Triple duplicates and two different sets of duplicates both caught
+  - Duplicates with different replaces fields still rejected
+  - Leading/trailing whitespace treated as same name (trimmed)
+  - Empty rows between duplicates still caught
+  - Duplicate error combined with other validation errors (name, class)
+  - Both "missing" and "custom" entry types handle duplicates
+  - Complete workflow: duplicate submit fails → rename → succeeds
+  - 24/24 tests passing (test/test-feature-76.mjs)
+
+- Feature #77 (Level field validation in preview dialog): PASSED
+  - Added _validatePreviewLevel static method to UIManager
+  - Updated preview dialog change handler to use validation with bounds checking
+  - Level 0 rejected, -1 rejected, -5 rejected
+  - Non-numeric "abc", "xyz" rejected; empty string, whitespace, null, undefined rejected
+  - Level 21, 100, 999 rejected (above maximum)
+  - Valid levels 1, 5, 10, 20 accepted
+  - Decimal "3.5" truncated to 3 via parseInt (valid)
+  - Integration: invalid values reset input to original, add invalid-level CSS class
+  - Valid values remove invalid-level CSS class
+  - Warning notification shown with module title for invalid entries
+  - Multiple level inputs validate independently
+  - HTML structure: type="number", min="1", max="20" attributes
+  - Inputs only on added/modified entries, not unchanged/removed
+  - 40/40 tests passing (test/test-feature-77.mjs)
+
+**Code Changes:**
+- scripts/ui-manager.mjs:
+  - Added _validatePreviewLevel(value) static method (returns {valid, level, error})
+  - Updated preview dialog level change handler to use _validatePreviewLevel
+  - Invalid values: reset input, add CSS class, show warning notification
+  - Valid values: update diff, remove CSS class
+- test/test-feature-76.mjs: New test suite (24 tests) - Duplicate feature name validation
+- test/test-feature-77.mjs: New test suite (40 tests) - Level field validation in preview
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Features #34,#35,#36: 94/94 passing
+  - Feature #54: 54/54, Feature #61: 42/42
+  - Feature #75: 22/22
+
+**Current Status:** 79/100 features passing (79.0%)
