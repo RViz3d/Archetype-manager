@@ -286,6 +286,65 @@ export class Applicator {
   }
 
   /**
+   * Restore classAssociations from backup (emergency restore)
+   * Used when classAssociations become corrupted and need to be restored to original state.
+   * This removes ALL archetypes and restores the original classAssociations from backup.
+   * @param {Actor} actor - The actor document
+   * @param {Item} classItem - The class item document
+   * @returns {object} { success: boolean, message: string, restoredCount: number }
+   */
+  static async restoreFromBackup(actor, classItem) {
+    // Permission check
+    if (!game.user.isGM && !actor.isOwner) {
+      ui.notifications.error(`${MODULE_TITLE} | You do not have permission to modify this character.`);
+      return { success: false, message: 'Permission denied', restoredCount: 0 };
+    }
+
+    const backup = classItem.getFlag(MODULE_ID, 'originalAssociations');
+    if (!backup) {
+      ui.notifications.warn(`${MODULE_TITLE} | No backup found. Cannot restore.`);
+      return { success: false, message: 'No backup found', restoredCount: 0 };
+    }
+
+    try {
+      // Restore original classAssociations from backup
+      await classItem.update({
+        'system.links.classAssociations': foundry.utils.deepClone(backup)
+      });
+
+      // Delete all archetype-created item copies
+      const existingArchetypes = classItem.getFlag(MODULE_ID, 'archetypes') || [];
+      for (const slug of existingArchetypes) {
+        await this._deleteCreatedCopies(actor, slug);
+      }
+
+      // Clean up all archetype tracking flags
+      await classItem.unsetFlag(MODULE_ID, 'archetypes');
+      await classItem.unsetFlag(MODULE_ID, 'originalAssociations');
+      await classItem.unsetFlag(MODULE_ID, 'appliedAt');
+      await classItem.unsetFlag(MODULE_ID, 'appliedArchetypeData');
+
+      // Clean up actor-level flags
+      const classTag = classItem.system.tag || classItem.name.slugify();
+      const actorArchetypes = actor.getFlag(MODULE_ID, 'appliedArchetypes') || {};
+      if (actorArchetypes[classTag]) {
+        delete actorArchetypes[classTag];
+        await actor.setFlag(MODULE_ID, 'appliedArchetypes',
+          Object.keys(actorArchetypes).length > 0 ? actorArchetypes : null
+        );
+      }
+
+      ui.notifications.info(`${MODULE_TITLE} | Restored ${classItem.name} to original state (${backup.length} features).`);
+      return { success: true, message: 'Restored successfully', restoredCount: backup.length };
+
+    } catch (error) {
+      console.error(`${MODULE_ID} | Error restoring from backup:`, error);
+      ui.notifications.error(`${MODULE_TITLE} | Failed to restore from backup.`);
+      return { success: false, message: error.message, restoredCount: 0 };
+    }
+  }
+
+  /**
    * Rollback a failed application
    * @private
    */
