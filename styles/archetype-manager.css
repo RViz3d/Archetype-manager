@@ -178,6 +178,12 @@
   background: var(--color-hover-bg, rgba(0, 0, 0, 0.05));
 }
 
+.archetype-manager-dialog .archetype-item:focus {
+  outline: 2px solid var(--color-border-highlight, #7a7971);
+  outline-offset: -2px;
+  background: var(--color-hover-bg, rgba(0, 0, 0, 0.05));
+}
+
 .archetype-manager-dialog .archetype-item.selected {
   background: var(--color-bg-option, rgba(100, 149, 237, 0.1));
 }
@@ -283,6 +289,12 @@
 
 .archetype-manager .info-btn:hover {
   color: var(--color-text-hyperlink, #7a7971);
+}
+
+.archetype-manager .info-btn:focus {
+  outline: 2px solid var(--color-border-highlight, #7a7971);
+  outline-offset: 1px;
+  border-radius: 3px;
 }
 
 /* === Manual Entry Dialog === */
