@@ -1500,3 +1500,62 @@ All tests passing: 920+ total tests across all test suites (zero regressions)
   - Feature #75: 22/22
 
 **Current Status:** 79/100 features passing (79.0%)
+
+### Session (2025-02-11) - Features #78, #79, #80
+
+**Accomplished:**
+- Feature #78 (Success notification after archetype application): PASSED
+  - ui.notifications.info called after successful apply
+  - Includes archetype name, class name, module title, "Applied" action word
+  - Uses pipe separator format: "PF1e Archetype Manager | Applied X to Y"
+  - No success notification on failure (duplicate, permission denied, wrong class)
+  - Error/warning notifications correctly shown for failure scenarios
+  - Each apply call produces exactly one success notification
+  - Notification is plain text (no HTML), no "undefined"/"null"/[object Object]
+  - Success notification appears after chat message (correct ordering)
+  - Edge cases: empty archetypes, special characters, additive-only
+  - 29/29 tests passing (test/test-feature-78.mjs)
+
+- Feature #79 (Success notification after archetype removal): PASSED
+  - ui.notifications.info called after successful remove
+  - Includes class name, module title, "Removed" action word
+  - Pipe separator format consistent with application notification
+  - No success notification when archetype not applied (warning shown instead)
+  - No success notification on permission denied (error shown)
+  - Selective removal from multi-archetype stack shows success
+  - Each removal produces its own notification
+  - Notification is clean (no undefined/null/[object Object]/HTML)
+  - Apply-remove-apply-remove cycle: correct notifications each step
+  - Error during removal shows error notification, not success
+  - Different class names (Rogue, Wizard) correctly reflected
+  - 26/26 tests passing (test/test-feature-79.mjs)
+
+- Feature #80 (Loading indicator during compendium operations): PASSED
+  - Loading indicator HTML exists: .loading-indicator div with fa-spinner fa-spin icon
+  - Text says "Loading archetypes..."
+  - Initially hidden (display: none) in template
+  - Shown (display: flex) when loadArchetypes starts
+  - Hidden (display: none) when load completes
+  - Archetype list cleared during loading
+  - Class selection change triggers loading indicator
+  - Loading indicator hides even on compendium load error
+  - Fast/cached loads: no persistent flash (indicator hides immediately)
+  - JE-only mode: indicator hides after empty load
+  - Slow loads: indicator visible during operation, hidden after
+  - UI responsive during loading (class select and search not disabled)
+  - Initial dialog open triggers loadArchetypes automatically
+  - No class items: loadArchetypes not triggered (no crash)
+  - 25/25 tests passing (test/test-feature-80.mjs)
+
+**Code Changes:**
+- test/test-feature-78.mjs: New test suite (29 tests) - Success notification on application
+- test/test-feature-79.mjs: New test suite (26 tests) - Success notification on removal
+- test/test-feature-80.mjs: New test suite (25 tests) - Loading indicator during compendium ops
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #38: 44/44, Feature #42: 39/39
+  - Features #56,#57,#58: 36/36, Feature #54: 54/54
+
+**Current Status:** 81/100 features passing (81.0%)
