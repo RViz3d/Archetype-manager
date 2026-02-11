@@ -35,9 +35,11 @@ export class DiffEngine {
     // Process each archetype feature
     for (const feature of parsedArchetype.features) {
       if (feature.type === 'replacement' && feature.matchedAssociation) {
-        // Find the base association index
+        // Find the base association index (guard against undefined === undefined false matches)
+        const matchUuid = feature.matchedAssociation.uuid;
+        const matchId = feature.matchedAssociation.id;
         const baseIndex = baseAssociations.findIndex(
-          a => a.uuid === feature.matchedAssociation.uuid || a.id === feature.matchedAssociation.id
+          a => (matchUuid && a.uuid === matchUuid) || (matchId && a.id === matchId)
         );
         if (baseIndex >= 0) {
           replacedIndices.add(baseIndex);
