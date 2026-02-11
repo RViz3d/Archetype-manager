@@ -728,3 +728,62 @@
 
 **Current Status:** 47/100 features passing (47.0%)
 (Features #1-11, #13-14, #16-18, #21-29, #30, #33-38, #43, #48-50, #62, #75, #89, and others)
+
+### Session (2025-02-11) - Features #30, #31, #55
+
+**Accomplished:**
+- Feature #30 (Conflict check against already-applied archetypes): PASSED
+  - Enhanced ConflictChecker with checkCanApply method (returns canApply, conflicts, blockedBy)
+  - Added validateStacking method with unique conflict pair tracking
+  - Updated UIManager to show conflict warning icons in archetype list
+  - Click handler blocks selection with detailed warning when conflicts exist
+  - _buildAppliedArchetypeData reads from class item flags to build conflict data
+  - Handles null/empty classItem, unknown slugs, multiple applied archetypes
+  - Modification vs replacement conflicts detected correctly
+  - 36/36 tests passing (test/test-feature-30.mjs)
+
+- Feature #31 (Multi-archetype stacking validation): PASSED
+  - Added getCumulativeReplacements: tracks all replaced features by archetype
+  - Added validateAddToStack: validates new archetype against existing stack
+  - Added validateRemoveFromStack: validates remaining stack after removal
+  - Full step-by-step incremental stacking simulation tested
+  - Complex scenarios: 4+ archetype stacks, removal and restacking
+  - Cumulative replacement correctly tracks replacements, modifications, targets
+  - Edge cases: duplicate archetypes, empty stacks, non-existent slugs
+  - 40/40 tests passing (test/test-feature-31.mjs)
+
+- Feature #55 (Support for selecting multiple archetypes for stacking): PASSED
+  - Multi-selection UI: click to toggle, deselect, clear on class change
+  - Added "Apply Selected" button to main dialog with combined preview
+  - Combined diff merges features from all selected archetypes
+  - Conflict checking prevents selecting conflicting archetypes (warns and blocks)
+  - Additive archetypes always allowed in any selection
+  - Dialog state synced between render callback and button callbacks
+  - Combined diff preview shows all changes from all selected archetypes
+  - Final stacking validation before apply catches late conflicts
+  - 36/36 tests passing (test/test-feature-55.mjs)
+
+**Code Changes:**
+- scripts/conflict-checker.mjs: Major enhancement
+  - checkCanApply(), validateStacking(), getCumulativeReplacements()
+  - validateAddToStack(), validateRemoveFromStack()
+- scripts/ui-manager.mjs: Multi-selection and conflict integration
+  - Import ConflictChecker
+  - Dialog-scope state variables for button callback access
+  - syncToDialogScope() for state synchronization
+  - "Apply Selected" button with combined diff and final validation
+  - Conflict warning icons in archetype list
+  - Click handler blocks conflicting selections
+  - _buildAppliedArchetypeData() helper method
+- test/test-feature-30.mjs: 36 tests for conflict against applied
+- test/test-feature-31.mjs: 40 tests for multi-archetype stacking
+- test/test-feature-55.mjs: 36 tests for multi-selection UI
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions)
+  - Feature #29: 26/26, #30: 36/36, #33: 43/43, #68: 41/41
+  - Features #49,#50,#89: 30/30
+
+**Current Status:** 48/100 features passing (48.0%)
+All tests passing: 920+ total tests across all test suites (zero regressions)
