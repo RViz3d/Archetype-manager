@@ -306,3 +306,52 @@
 (Features #1-6, #10-11, #17, #21-24, #27, #48, #62, #75)
 
 **All tests passing:** 268 total tests across all test suites (zero regressions)
+
+### Session 7 (2025-02-11)
+
+**Accomplished:**
+- Feature #8 (Flag schemas work on class items): PASSED
+  - Create test actor with Fighter class item
+  - Set/read archetypes flag (['test'])
+  - Set/read originalAssociations flag (array of association objects)
+  - Set/read appliedAt flag (ISO timestamp string)
+  - Read all three flags back simultaneously and verify
+  - Unset all flags and verify cleanup (all return null)
+  - Flag isolation between module scopes
+  - Overwrite existing flag values
+  - Uninitialized flags return null
+  - Multiple class items have independent flags
+  - Complex objects preserved in originalAssociations
+  - Full applicator workflow simulation (backup → track → cleanup)
+  - Unset on non-existent flag doesn't throw
+  - 51/51 tests passing (test/test-feature-8.mjs)
+
+- Feature #9 (Flag schemas work on actors): PASSED
+  - Set/read appliedArchetypes flag with { classTag: [slug] } structure
+  - Update flag to add another class entry
+  - Both entries verified after update
+  - Unset flag and verify cleanup
+  - Multi-archetype stacking on single class
+  - Multiple classes with multiple archetypes
+  - Incremental add simulating Applicator.apply workflow
+  - Selective removal simulating Applicator.remove workflow
+  - Flag isolation between actors
+  - Flag scope isolation between modules
+  - Unset on non-existent flag is safe
+  - 39/39 tests passing (test/test-feature-9.mjs)
+
+- Feature #7 (Module settings registered correctly): PASSED
+  - lastSelectedClass and showParseWarnings registered
+  - Full metadata verification (name, hint, scope, config, type, default)
+  - Default values readable via game.settings.get()
+  - Setting values changeable and retrievable
+  - Overwrite setting values
+  - Unregistered settings throw proper error
+  - Settings re-register correctly across simulated reload
+  - Multiple set/get cycles
+  - 40/40 tests passing (test/test-feature-7.mjs)
+
+**Current Status:** 21/100 features passing
+(Features #1-11, #17, #21-24, #27, #48, #62, #75)
+
+**All tests passing:** 398 total tests across all test suites (zero regressions)
