@@ -128,7 +128,6 @@
   bottom: 0;
   background: var(--color-bg, #f0f0e0);
   z-index: 1;
-  padding-bottom: 20px;
 }
 
 /* === Class Selector === */
@@ -375,7 +374,6 @@
   bottom: 0;
   background: var(--color-bg, #f0f0e0);
   z-index: 1;
-  padding-bottom: 20px;
 }
 
 /* === Preview Diff Table - Long Feature Lists === */
@@ -514,4 +512,12 @@
 /* === Actor Sheet Title Bar Button === */
 .archetype-manager-header-btn:hover {
   text-shadow: 0 0 4px var(--color-shadow-primary, #ff6400);
+}
+
+/* === Resize Handle — elevate above sticky dialog buttons === */
+.archetype-manager-dialog .window-resizable-handle,
+.archetype-preview-dialog .window-resizable-handle,
+.archetype-manager-dialog .ui-resizable-handle,
+.archetype-preview-dialog .ui-resizable-handle {
+  z-index: 2;
 }
