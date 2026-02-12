@@ -110,13 +110,18 @@ function parseCrawlerData(json) {
 function buildTouchedList(rawFeatures, className) {
   const seen = new Set();
   for (const raw of rawFeatures) {
-    const fixed = fixTypos(raw);
-    const baseName = getSeriesBaseName(fixed, className);
-    if (baseName) {
-      seen.add(baseName);
-    } else {
-      // Non-scalable feature — normalize to lowercase trimmed
-      seen.add(fixed.toLowerCase().trim());
+    // Split comma-separated composite entries
+    // e.g., "2nd-level Bonus Feat, Armor Mastery, Weapon Mastery" → 3 entries
+    const subEntries = raw.split(/,\s*/);
+    for (const sub of subEntries) {
+      const fixed = fixTypos(sub);
+      const baseName = getSeriesBaseName(fixed, className);
+      if (baseName) {
+        seen.add(baseName);
+      } else {
+        // Non-scalable feature — normalize to lowercase trimmed
+        seen.add(fixed.toLowerCase().trim());
+      }
     }
   }
   return [...seen].sort();
@@ -167,7 +172,9 @@ async function main() {
 
     for (const [archName, rawFeatures] of archetypes) {
       const slug = slugify(archName);
-      const fixedRaw = rawFeatures.map(f => fixTypos(f));
+      const fixedRaw = rawFeatures.flatMap(f =>
+        f.split(/,\s*/).map(sub => fixTypos(sub))
+      );
       const touched = buildTouchedList(rawFeatures, className);
 
       // Get compatible archetypes from pair data

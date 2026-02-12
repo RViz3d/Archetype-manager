@@ -355,6 +355,7 @@ export class ConflictChecker {
       // Fast path: Use DB pre-computed compatibility pairs
       if (useDb) {
         let dbIncompatible = false;
+        let dbCompatible = false;
         try {
           for (const activeSlug of activeSet) {
             const compat = CompatibilityDB.areCompatible(className, activeSlug, slug);
@@ -363,12 +364,18 @@ export class ConflictChecker {
               incompatible.set(slug, `Incompatible with ${displayName} (DB)`);
               dbIncompatible = true;
               break;
+            } else if (compat === true) {
+              dbCompatible = true;
             }
+            // compat === null: unknown pair, continue checking other active slugs
           }
         } catch (e) {
           debugLog(`${MODULE_ID} | getIncompatibleArchetypes: DB pair check failed for "${slug}":`, e);
         }
-        if (dbIncompatible) continue;
+        // Skip feature-intersection if DB definitively answered (compatible or incompatible)
+        // This prevents false positives from series-level overlap when archetypes touch
+        // different tiers of the same series (e.g., Armor Training 1 vs Armor Training 4)
+        if (dbIncompatible || dbCompatible) continue;
       }
 
       // Fallback: Feature-intersection logic
