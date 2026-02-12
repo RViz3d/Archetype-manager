@@ -2264,3 +2264,34 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
   - Feature #107: 29/29, Feature #92: 35/35
 
 **Current Status:** 104/110 features passing (approximately)
+
+### Session (2025-02-12) - Feature #110
+
+**Accomplished:**
+- Feature #110 (Register debug logging toggle setting): PASSED
+  - Section 1: Setting registration in init hook (8 tests)
+    - debugLogging registered with type Boolean, default false, scope 'client', config true
+    - Descriptive name ('Debug Logging') and hint explaining verbose console output
+    - Default value returns false via game.settings.get
+  - Section 2: debugLog utility function exists and is exported (2 tests)
+  - Section 3: debugLog suppresses logs when disabled (default) (2 tests)
+  - Section 4: debugLog outputs logs when enabled (2 tests)
+  - Section 5: console.warn and console.error NOT affected (2 tests)
+  - Section 6: Source code verification (7 tests) - no bare console.log in any script
+  - Section 7: debugLog imports in dependent modules (3 tests)
+  - Section 8: Toggling behavior (3 tests)
+  - Section 9: Integration with existing settings (2 tests) - 6 total settings
+  - Section 10: Edge cases (3 tests) - graceful fallback when setting not registered
+  - 34/34 tests passing (test/test-feature-110.mjs)
+
+**Code Changes:**
+- scripts/module.mjs:
+  - Added debugLogging setting registration (Boolean, default false, client, config: true)
+  - Created debugLog() utility function that checks setting before calling console.log
+  - Replaced all console.log calls with debugLog, exported debugLog
+- scripts/applicator.mjs: Imported debugLog, replaced console.log in _rollback
+- scripts/compendium-parser.mjs: Imported debugLog, replaced console.log calls
+- scripts/journal-db.mjs: Imported debugLog, replaced console.log in ensureDatabase
+- test/test-feature-110.mjs: New test suite (34 tests)
+
+**Current Status:** 104/110 features passing
