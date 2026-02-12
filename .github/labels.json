@@ -1,0 +1,42 @@
+[
+  {
+    "name": "beta",
+    "color": "6f42c1",
+    "description": "Beta testing issue"
+  },
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Something isn't working"
+  },
+  {
+    "name": "ui",
+    "color": "0075ca",
+    "description": "UI/visual issue"
+  },
+  {
+    "name": "functional",
+    "color": "c2e0c6",
+    "description": "Logic/data issue"
+  },
+  {
+    "name": "severity: critical",
+    "color": "b60205",
+    "description": "Crash or data corruption"
+  },
+  {
+    "name": "severity: major",
+    "color": "d93f0b",
+    "description": "Feature broken, no workaround"
+  },
+  {
+    "name": "severity: minor",
+    "color": "fbca04",
+    "description": "Cosmetic or edge case"
+  },
+  {
+    "name": "verified",
+    "color": "0e8a16",
+    "description": "Fix confirmed by beta tester"
+  }
+]
