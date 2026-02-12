@@ -43,32 +43,16 @@ export class DiffEngine {
     const addedFeatures = [];
 
     // Phase 2: Process each archetype feature against the (potentially expanded) base
+    // Uses name-based matching as primary strategy (correct after expansion),
+    // falling back to UUID+level for non-scalable features.
+    const matchedBaseIndices = new Set();
+
     for (const feature of parsedArchetype.features) {
-      if (feature.type === 'replacement' && feature.matchedAssociation) {
-        // Find the base association index
-        const matchUuid = feature.matchedAssociation.uuid;
-        const matchId = feature.matchedAssociation.id;
-        const matchLevel = feature.matchedAssociation.level;
-        const baseIndex = expandedBase.findIndex(a => {
-          // Match by UUID/ID AND level (important for split tiers sharing same UUID)
-          const uuidMatch = (matchUuid && a.uuid === matchUuid) || (matchId && a.id === matchId);
-          if (!uuidMatch) return false;
-          // If matching a split tier, also match by level
-          if (a._isSplitTier && matchLevel !== undefined) {
-            return a.level === matchLevel;
-          }
-          return true;
-        });
+      if ((feature.type === 'replacement' || feature.type === 'modification') && feature.matchedAssociation) {
+        const baseIndex = this._findBaseIndex(feature, expandedBase, matchedBaseIndices);
         if (baseIndex >= 0) {
           replacedIndices.add(baseIndex);
-        }
-        addedFeatures.push(feature);
-      } else if (feature.type === 'modification') {
-        const baseIndex = expandedBase.findIndex(
-          a => a.uuid === feature.matchedAssociation?.uuid
-        );
-        if (baseIndex >= 0) {
-          replacedIndices.add(baseIndex);
+          matchedBaseIndices.add(baseIndex);
         }
         addedFeatures.push(feature);
       } else if (feature.type === 'additive') {
@@ -141,15 +125,23 @@ export class DiffEngine {
 
     if (targetedSeries.size === 0) return baseAssociations;
 
-    // Expand targeted scalable features
+    // Expand targeted scalable features, deduplicating series
+    // Base classes may have separate entries per tier (e.g., Armor Training at levels 3, 7, 11, 15).
+    // splitIntoTiers() creates ALL tiers from the registry, so we only need the first entry per series.
     const expanded = [];
+    const processedSeries = new Set();
+
     for (const assoc of baseAssociations) {
       const baseName = ScalableFeatures.getSeriesBaseName(
         assoc.resolvedName || '', className
       );
 
       if (baseName && targetedSeries.has(baseName)) {
-        // This is a condensed scalable feature that needs splitting
+        if (processedSeries.has(baseName)) {
+          continue; // Already expanded this series from a previous entry
+        }
+        processedSeries.add(baseName);
+
         const tiers = ScalableFeatures.splitIntoTiers(assoc, className);
         if (tiers) {
           expanded.push(...tiers);
@@ -160,6 +152,60 @@ export class DiffEngine {
     }
 
     return expanded;
+  }
+
+  /**
+   * Find the best matching base association index for an archetype feature.
+   * Tries multiple strategies in priority order:
+   *   1. Exact case-insensitive name match (feature.target vs resolvedName)
+   *   2. Normalized name match (strips tier numbers for fuzzy matching)
+   *   3. UUID+level fallback (original strategy for non-scalable features)
+   *
+   * @param {object} feature - Archetype feature with target and matchedAssociation
+   * @param {Array} expandedBase - Expanded base associations
+   * @param {Set} matchedBaseIndices - Already-matched indices to skip
+   * @returns {number} Index into expandedBase, or -1 if no match
+   * @private
+   */
+  static _findBaseIndex(feature, expandedBase, matchedBaseIndices) {
+    // Strategy 1: Exact case-insensitive name match
+    if (feature.target) {
+      const lowerTarget = feature.target.trim().toLowerCase();
+      const idx = expandedBase.findIndex((a, i) => {
+        if (matchedBaseIndices.has(i)) return false;
+        return (a.resolvedName || '').trim().toLowerCase() === lowerTarget;
+      });
+      if (idx >= 0) return idx;
+    }
+
+    // Strategy 2: Normalized name match (strips tier numbers, parentheticals)
+    if (feature.target) {
+      const normalizedTarget = CompendiumParser.normalizeName(feature.target);
+      const idx = expandedBase.findIndex((a, i) => {
+        if (matchedBaseIndices.has(i)) return false;
+        return CompendiumParser.normalizeName(a.resolvedName || '') === normalizedTarget;
+      });
+      if (idx >= 0) return idx;
+    }
+
+    // Strategy 3: UUID+level fallback (for non-scalable features or when name match fails)
+    if (feature.matchedAssociation) {
+      const matchUuid = feature.matchedAssociation.uuid;
+      const matchId = feature.matchedAssociation.id;
+      const matchLevel = feature.matchedAssociation.level;
+      const idx = expandedBase.findIndex((a, i) => {
+        if (matchedBaseIndices.has(i)) return false;
+        const uuidMatch = (matchUuid && a.uuid === matchUuid) || (matchId && a.id === matchId);
+        if (!uuidMatch) return false;
+        if (a._isSplitTier && matchLevel !== undefined) {
+          return a.level === matchLevel;
+        }
+        return true;
+      });
+      if (idx >= 0) return idx;
+    }
+
+    return -1;
   }
 
   /**

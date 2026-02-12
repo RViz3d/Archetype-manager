@@ -13,6 +13,7 @@
 import { MODULE_ID, debugLog } from './module.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
 import { CompatibilityDB } from './compatibility-db.mjs';
+import { ScalableFeatures } from './scalable-features.mjs';
 
 export class CompendiumParser {
   // Regex patterns for parsing archetype feature descriptions
@@ -297,7 +298,11 @@ export class CompendiumParser {
       // Priority 2: If regex missed (additive/unknown) but DB knows this archetype touches
       // base features, try to match the feature name against touchedRaw entries
       if (dbTouchedRaw && (classification.type === 'additive' || classification.type === 'unknown')) {
-        const dbTarget = this._matchFeatureToDbTouched(feature.name, archetype.name, dbTouchedRaw);
+        const dbTarget = this._matchFeatureToDbTouched(feature.name, archetype.name, dbTouchedRaw, {
+          level,
+          className,
+          baseAssociations: resolvedAssociations
+        });
         if (dbTarget) {
           debugLog(`${MODULE_ID} | CompatibilityDB reclassified "${feature.name}" as replacement of "${dbTarget}"`);
           classification = { type: 'replacement', target: dbTarget };
@@ -330,18 +335,25 @@ export class CompendiumParser {
 
   /**
    * Try to match an archetype feature name against the DB's touchedRaw list.
-   * Strips the archetype short name from the feature name before matching.
    *
-   * Example: Feature "Tribal Weapon Training (Tribal Fighter)" with touchedRaw
-   * ["Weapon Training 1", ...] → matches "Weapon Training" series.
+   * Strategy 1: Substring match — feature name contains a touchedRaw entry.
+   *   e.g., "Tribal Weapon Training" contains "Weapon Training"
+   *
+   * Strategy 2: Level-based correlation — if the feature has a known level,
+   *   check if any touchedRaw entry maps to a scalable feature tier at that level.
+   *   Covers renamed features like "Shattering Strike" (lv2) → "Bravery" (lv2).
    *
    * @param {string} featureName - Full feature name (may include archetype in parens)
    * @param {string} archetypeName - Full archetype name like "Fighter (Tribal Fighter)"
    * @param {string[]} touchedRaw - Raw feature names from DB
+   * @param {object} [options] - Additional matching options
+   * @param {number} [options.level] - Level of the archetype feature
+   * @param {string} [options.className] - Class name for scalable feature lookup
+   * @param {Array} [options.baseAssociations] - Resolved base classAssociations
    * @returns {string|null} The matched base feature name, or null
    * @private
    */
-  static _matchFeatureToDbTouched(featureName, archetypeName, touchedRaw) {
+  static _matchFeatureToDbTouched(featureName, archetypeName, touchedRaw, options = {}) {
     // Strip parenthetical (archetype name) from feature name
     // "Tribal Weapon Training (Tribal Fighter)" → "Tribal Weapon Training"
     const cleanName = featureName.replace(/\s*\(.*?\)\s*$/, '').trim();
@@ -349,6 +361,7 @@ export class CompendiumParser {
     // Normalize for comparison
     const normalizedClean = this.normalizeName(cleanName);
 
+    // Strategy 1: Substring/exact match
     for (const rawTarget of touchedRaw) {
       const normalizedTarget = this.normalizeName(rawTarget);
       if (!normalizedTarget) continue;
@@ -362,6 +375,33 @@ export class CompendiumParser {
       // Check if normalized forms match
       if (normalizedClean === normalizedTarget) {
         return rawTarget;
+      }
+    }
+
+    // Strategy 2: Level-based correlation for renamed replacement features
+    const { level, className, baseAssociations } = options;
+    if (level && className) {
+      for (const rawTarget of touchedRaw) {
+        // Check if this touchedRaw entry is a scalable feature with a tier at this level
+        const parsed = ScalableFeatures.parseTarget(rawTarget, className);
+        if (parsed && parsed.series) {
+          const matchingTier = parsed.series.tiers.find(t => t.level === level);
+          if (matchingTier) {
+            return rawTarget;
+          }
+        }
+
+        // For non-scalable entries, check if any base association with matching name
+        // has a level equal to the archetype feature's level
+        if (baseAssociations) {
+          const normalizedTarget = this.normalizeName(rawTarget);
+          for (const assoc of baseAssociations) {
+            if (!assoc.resolvedName) continue;
+            if (this.normalizeName(assoc.resolvedName) === normalizedTarget && assoc.level === level) {
+              return rawTarget;
+            }
+          }
+        }
       }
     }
 

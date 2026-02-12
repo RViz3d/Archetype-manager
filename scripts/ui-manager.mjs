@@ -219,7 +219,11 @@ export class UIManager {
 
           try {
             // Load CompatibilityDB (idempotent, cached after first load)
-            await CompatibilityDB.load();
+            try {
+              await CompatibilityDB.load();
+            } catch (e) {
+              console.warn(`${MODULE_ID} | CompatibilityDB load failed, continuing without DB:`, e);
+            }
 
             // Load archetypes from compendium
             const compendiumArchetypes = await CompendiumParser.loadArchetypeList();

@@ -67,16 +67,19 @@ export class CompatibilityDB {
     const classData = this._db.classes?.[classKey];
     if (!classData) return null;
 
-    // Try direct slug match first
-    if (classData[archetypeSlug]) return classData[archetypeSlug];
+    // Normalize slug to strip parens and other non-alphanumeric chars
+    // (FoundryVTT's non-strict slugify keeps parens, e.g. "fighter-(tribal-fighter)")
+    const normalized = this._normalizeSlug(archetypeSlug);
 
-    // Try normalizing the slug (strip class prefix if present, e.g. "fighter-two-handed-fighter")
-    const stripped = archetypeSlug.replace(new RegExp(`^${classKey}-`), '');
-    if (classData[stripped]) return classData[stripped];
+    // Try direct match with normalized slug
+    if (classData[normalized]) return classData[normalized];
+
+    // Try stripping class prefix: "fighter-tribal-fighter" → "tribal-fighter"
+    const stripped = normalized.replace(new RegExp(`^${classKey}-`), '');
+    if (stripped !== normalized && classData[stripped]) return classData[stripped];
 
     // Try matching by extracting short name from "Class (ArchetypeName)" slug format
-    // e.g., "fighter-two-handed-fighter" → try "two-handed-fighter"
-    const shortMatch = archetypeSlug.match(/^[a-z]+-(.+)$/);
+    const shortMatch = normalized.match(/^[a-z]+-(.+)$/);
     if (shortMatch && classData[shortMatch[1]]) return classData[shortMatch[1]];
 
     return null;
@@ -128,16 +131,19 @@ export class CompatibilityDB {
     if (!entryA || !entryB) return null;
 
     // Check A's compatible list for B
+    // DB compatible lists use normalized short slugs (e.g., "tribal-fighter")
     const compatA = entryA.compatible || [];
-    // Need to check both the exact slug and possible variations
-    const slugBShort = this._extractShortSlug(slugB, className);
-    const slugAShort = this._extractShortSlug(slugA, className);
+    const normalizedSlugB = this._normalizeSlug(slugB);
+    const slugBShort = this._normalizeSlug(this._extractShortSlug(slugB, className));
 
-    if (compatA.includes(slugB) || compatA.includes(slugBShort)) return true;
+    if (compatA.includes(normalizedSlugB) || compatA.includes(slugBShort)) return true;
 
     // Check B's compatible list for A (symmetry check)
     const compatB = entryB.compatible || [];
-    if (compatB.includes(slugA) || compatB.includes(slugAShort)) return true;
+    const normalizedSlugA = this._normalizeSlug(slugA);
+    const slugAShort = this._normalizeSlug(this._extractShortSlug(slugA, className));
+
+    if (compatB.includes(normalizedSlugA) || compatB.includes(slugAShort)) return true;
 
     // Both in DB but neither lists the other → incompatible
     return false;
@@ -168,8 +174,22 @@ export class CompatibilityDB {
    * @private
    */
   static _extractShortSlug(slug, className) {
+    const normalized = this._normalizeSlug(slug);
     const prefix = className.toLowerCase().trim() + '-';
-    if (slug.startsWith(prefix)) return slug.slice(prefix.length);
-    return slug;
+    if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+    return normalized;
+  }
+
+  /**
+   * Normalize a slug by stripping all non-alphanumeric characters to dashes.
+   * Bridges FoundryVTT's non-strict slugify (keeps parens) and DB's strict slugify.
+   * e.g., "fighter-(tribal-fighter)" → "fighter-tribal-fighter"
+   * @param {string} slug
+   * @returns {string}
+   * @private
+   */
+  static _normalizeSlug(slug) {
+    if (!slug) return '';
+    return slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 }
