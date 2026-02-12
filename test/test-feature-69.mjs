@@ -109,14 +109,16 @@ function buildTestArchetype() {
           id: 'bravery-id',
           level: 2,
           resolvedName: 'Bravery'
-        }
+        },
+        uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Item.shattering-strike'
       },
       {
         name: 'Overhand Chop',
         type: 'additive',
         target: null,
         level: 3,
-        description: 'Doubles Str bonus on single attacks.'
+        description: 'Doubles Str bonus on single attacks.',
+        uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Item.overhand-chop'
       }
     ]
   };
@@ -531,10 +533,9 @@ console.log('\n--- Full Application (Applicator.apply) ---');
   assert(afterAssociations.some(a => a.resolvedName === 'Bonus Feat'),
     'After apply: Bonus Feat still in classAssociations');
 
-  // The replacement entry replaces via UUID swap - the new association carries the
-  // matchedAssociation reference (Bravery's UUID) at the archetype feature's level
-  // This is correct PF1e behavior: the classAssociation slot is reused
-  assert(afterAssociations.some(a => a.uuid === 'Compendium.pf1.class-abilities.Item.bravery'),
+  // After BUG-001 fix: the replacement entry uses the archetype feature's own UUID,
+  // NOT the base feature UUID. The Bravery slot is replaced by the archetype's Shattering Strike UUID.
+  assert(afterAssociations.some(a => a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.Item.shattering-strike'),
     'After apply: Bravery UUID slot reused for replacement feature');
 
   // Tracking flags confirm archetype was applied

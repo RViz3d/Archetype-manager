@@ -153,8 +153,8 @@ var twoHandedFighterParsed = {
       target: 'bravery',
       // matchedAssociation is the base feature being matched/replaced
       matchedAssociation: resolvedFighterAssociations?.[1] || { uuid: 'Compendium.pf1.class-abilities.Bravery', level: 2 },
-      // archetypeUuid would be the archetype feature's own UUID
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike',
+      // uuid is the archetype feature's own UUID (what gets inserted into classAssociations)
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike',
       source: 'auto-parse'
     },
     {
@@ -163,7 +163,7 @@ var twoHandedFighterParsed = {
       type: 'replacement',
       target: 'armor training 1',
       matchedAssociation: resolvedFighterAssociations?.[2] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining1', level: 3 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop',
       source: 'auto-parse'
     },
     {
@@ -172,7 +172,7 @@ var twoHandedFighterParsed = {
       type: 'modification',
       target: 'weapon training 1',
       matchedAssociation: resolvedFighterAssociations?.[3] || { uuid: 'Compendium.pf1.class-abilities.WeaponTraining1', level: 5 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining',
       source: 'auto-parse'
     },
     {
@@ -181,7 +181,7 @@ var twoHandedFighterParsed = {
       type: 'replacement',
       target: 'armor training 2',
       matchedAssociation: resolvedFighterAssociations?.[4] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining2', level: 7 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing',
       source: 'auto-parse'
     },
     {
@@ -190,7 +190,7 @@ var twoHandedFighterParsed = {
       type: 'replacement',
       target: 'armor training 3',
       matchedAssociation: resolvedFighterAssociations?.[6] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining3', level: 11 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver',
       source: 'auto-parse'
     },
     {
@@ -199,7 +199,7 @@ var twoHandedFighterParsed = {
       type: 'replacement',
       target: 'armor training 4',
       matchedAssociation: resolvedFighterAssociations?.[8] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining4', level: 15 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack',
       source: 'auto-parse'
     },
     {
@@ -208,7 +208,7 @@ var twoHandedFighterParsed = {
       type: 'replacement',
       target: 'armor mastery',
       matchedAssociation: resolvedFighterAssociations?.[10] || { uuid: 'Compendium.pf1.class-abilities.ArmorMastery', level: 19 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow',
       source: 'auto-parse'
     }
   ]
@@ -386,12 +386,12 @@ test('Weapon Training modification has archetypeFeature data', () => {
 });
 
 test('Modified Weapon Training entry present in updated associations', () => {
-  // After _buildNewAssociations, modified entries with matchedAssociation are included
-  // The matchedAssociation for the modification is the WT1 base association
-  var wt1Entry = updatedAssociations.find(a =>
-    a.uuid === 'Compendium.pf1.class-abilities.WeaponTraining1'
+  // After BUG-001 fix: _buildNewAssociations uses the archetype feature's own UUID,
+  // NOT the base feature UUID. The modified WT should now point to the archetype's WT feature.
+  var wtEntry = updatedAssociations.find(a =>
+    a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining'
   );
-  assertNotNull(wt1Entry, 'WT1 UUID should still be present (modification, not removal)');
+  assertNotNull(wtEntry, 'Archetype WT UUID should be present (modification inserts archetype feature)');
 });
 
 // =====================================================

@@ -149,37 +149,37 @@ var twoHandedFighterParsed = {
     {
       name: 'Shattering Strike', level: 2, type: 'replacement', target: 'bravery',
       matchedAssociation: resolvedFighterAssociations?.[1] || { uuid: 'Compendium.pf1.class-abilities.Bravery', level: 2 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike', source: 'auto-parse'
     },
     {
       name: 'Overhand Chop', level: 3, type: 'replacement', target: 'armor training 1',
       matchedAssociation: resolvedFighterAssociations?.[2] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining1', level: 3 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop', source: 'auto-parse'
     },
     {
       name: 'Weapon Training', level: 5, type: 'modification', target: 'weapon training 1',
       matchedAssociation: resolvedFighterAssociations?.[3] || { uuid: 'Compendium.pf1.class-abilities.WeaponTraining1', level: 5 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining', source: 'auto-parse'
     },
     {
       name: 'Backswing', level: 7, type: 'replacement', target: 'armor training 2',
       matchedAssociation: resolvedFighterAssociations?.[4] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining2', level: 7 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing', source: 'auto-parse'
     },
     {
       name: 'Piledriver', level: 11, type: 'replacement', target: 'armor training 3',
       matchedAssociation: resolvedFighterAssociations?.[6] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining3', level: 11 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver', source: 'auto-parse'
     },
     {
       name: 'Greater Power Attack', level: 15, type: 'replacement', target: 'armor training 4',
       matchedAssociation: resolvedFighterAssociations?.[8] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining4', level: 15 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack', source: 'auto-parse'
     },
     {
       name: 'Devastating Blow', level: 19, type: 'replacement', target: 'armor mastery',
       matchedAssociation: resolvedFighterAssociations?.[10] || { uuid: 'Compendium.pf1.class-abilities.ArmorMastery', level: 19 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow', source: 'auto-parse'
     }
   ]
 };
@@ -299,6 +299,13 @@ test('Simulated reload: re-setup mock environment', () => {
     // Settings are re-registered on each init
     game.settings._registered.clear();
     game.settings._values.clear();
+    // Re-register all module settings (as module.mjs init hook would do)
+    game.settings.register('archetype-manager', 'lastSelectedClass', { default: '' });
+    game.settings.register('archetype-manager', 'showParseWarnings', { default: true });
+    game.settings.register('archetype-manager', 'autoCreateJEDB', { default: true });
+    game.settings.register('archetype-manager', 'chatNotifications', { default: true });
+    game.settings.register('archetype-manager', 'defaultCompendiumSource', { default: 'pf1e-archetypes' });
+    game.settings.register('archetype-manager', 'debugLogging', { default: false });
   }
 });
 
@@ -547,7 +554,7 @@ var weaponMasterParsed = {
     {
       name: 'Weapon Guard', level: 2, type: 'replacement', target: 'bravery',
       matchedAssociation: resolvedFighterAssociations?.[1] || { uuid: 'Compendium.pf1.class-abilities.Bravery', level: 2 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.WeaponGuard', source: 'auto-parse'
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.WeaponGuard', source: 'auto-parse'
     }
   ]
 };

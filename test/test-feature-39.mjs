@@ -210,7 +210,7 @@ var twoHandedFighterParsed = {
       target: 'bravery',
       description: '<p>Shattering Strike description. This replaces Bravery.</p>',
       matchedAssociation: resolvedFighterAssociations?.[1] || { uuid: 'Compendium.pf1.class-abilities.Bravery', level: 2 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.ShatteringStrike',
       source: 'auto-parse'
     },
     {
@@ -220,7 +220,7 @@ var twoHandedFighterParsed = {
       target: 'armor training 1',
       description: '<p>Overhand Chop description. This replaces Armor Training 1.</p>',
       matchedAssociation: resolvedFighterAssociations?.[2] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining1', level: 3 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.OverhandChop',
       source: 'auto-parse'
     },
     {
@@ -230,7 +230,7 @@ var twoHandedFighterParsed = {
       target: 'weapon training 1',
       description: '<p>At 5th level, a two-handed fighter gains weapon training as normal, but his bonuses only apply to two-handed melee weapons. This modifies Weapon Training.</p>',
       matchedAssociation: resolvedFighterAssociations?.[3] || { uuid: 'Compendium.pf1.class-abilities.WeaponTraining1', level: 5 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining',
       source: 'auto-parse'
     },
     {
@@ -240,7 +240,7 @@ var twoHandedFighterParsed = {
       target: 'armor training 2',
       description: '<p>Backswing description. This replaces Armor Training 2.</p>',
       matchedAssociation: resolvedFighterAssociations?.[4] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining2', level: 7 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Backswing',
       source: 'auto-parse'
     },
     {
@@ -250,7 +250,7 @@ var twoHandedFighterParsed = {
       target: 'armor training 3',
       description: '<p>Piledriver description. This replaces Armor Training 3.</p>',
       matchedAssociation: resolvedFighterAssociations?.[6] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining3', level: 11 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Piledriver',
       source: 'auto-parse'
     },
     {
@@ -260,7 +260,7 @@ var twoHandedFighterParsed = {
       target: 'armor training 4',
       description: '<p>Greater Power Attack description. This replaces Armor Training 4.</p>',
       matchedAssociation: resolvedFighterAssociations?.[8] || { uuid: 'Compendium.pf1.class-abilities.ArmorTraining4', level: 15 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.GreaterPowerAttack',
       source: 'auto-parse'
     },
     {
@@ -270,7 +270,7 @@ var twoHandedFighterParsed = {
       target: 'armor mastery',
       description: '<p>Devastating Blow description. This replaces Armor Mastery.</p>',
       matchedAssociation: resolvedFighterAssociations?.[10] || { uuid: 'Compendium.pf1.class-abilities.ArmorMastery', level: 19 },
-      archetypeUuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow',
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.DevastatingBlow',
       source: 'auto-parse'
     }
   ]
@@ -414,19 +414,19 @@ console.log('\n--- Step 4: Verify copy linked in classAssociations ---');
 
 test('Modified feature entry present in updated classAssociations', () => {
   var updatedAssociations = classItem.system.links.classAssociations;
-  // The modified feature's matchedAssociation (WT1 base) should be in classAssociations
-  var wt1Entry = updatedAssociations.find(a =>
-    a.uuid === 'Compendium.pf1.class-abilities.WeaponTraining1'
+  // After BUG-001 fix: modified entry uses archetype feature UUID, not base UUID
+  var wtEntry = updatedAssociations.find(a =>
+    a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining'
   );
-  assertNotNull(wt1Entry, 'Weapon Training 1 UUID should still be present in classAssociations');
+  assertNotNull(wtEntry, 'Archetype WT UUID should be present in classAssociations');
 });
 
 test('Modified entry level preserved in classAssociations', () => {
   var updatedAssociations = classItem.system.links.classAssociations;
-  var wt1Entry = updatedAssociations.find(a =>
-    a.uuid === 'Compendium.pf1.class-abilities.WeaponTraining1'
+  var wtEntry = updatedAssociations.find(a =>
+    a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining'
   );
-  assertEqual(wt1Entry.level, 5, 'WT1 should still be at level 5');
+  assertEqual(wtEntry.level, 5, 'WT should still be at level 5');
 });
 
 test('Diff has modification entry with archetypeFeature', () => {
@@ -438,10 +438,11 @@ test('Diff has modification entry with archetypeFeature', () => {
 
 test('_buildNewAssociations includes modified entry', () => {
   var newAssocs = Applicator._buildNewAssociations(diff);
+  // After BUG-001 fix: modified entries use archetype feature UUID
   var hasModified = newAssocs.some(a =>
-    a.uuid === 'Compendium.pf1.class-abilities.WeaponTraining1'
+    a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining'
   );
-  assert(hasModified, '_buildNewAssociations should include modified feature');
+  assert(hasModified, '_buildNewAssociations should include modified feature with archetype UUID');
 });
 
 // =====================================================
@@ -449,12 +450,13 @@ test('_buildNewAssociations includes modified entry', () => {
 // =====================================================
 console.log('\n--- Step 5: Verify original not deleted ---');
 
-test('Original Weapon Training 1 UUID still in classAssociations', () => {
+test('Archetype WT UUID present in classAssociations (replaces original WT1)', () => {
   var updatedAssociations = classItem.system.links.classAssociations;
-  var wt1 = updatedAssociations.find(a =>
-    a.uuid === 'Compendium.pf1.class-abilities.WeaponTraining1'
+  // After BUG-001 fix: modification uses archetype UUID, original base UUID is replaced
+  var wt = updatedAssociations.find(a =>
+    a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.THFWeaponTraining'
   );
-  assertNotNull(wt1, 'Original WT1 UUID should still be present');
+  assertNotNull(wt, 'Archetype WT UUID should be present');
 });
 
 test('Original Weapon Training 2-4 UUIDs still in classAssociations (unchanged)', () => {
@@ -550,6 +552,7 @@ var multiModArchetype = {
       target: 'sneak attack',
       description: '<p>An acrobat\'s sneak attack deals less damage but she gains acrobatic bonuses. This modifies Sneak Attack.</p>',
       matchedAssociation: { uuid: 'Compendium.pf1.class-abilities.SneakAttack1', level: 1, resolvedName: 'Sneak Attack' },
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Item.acrobat-sneak-attack',
       source: 'auto-parse'
     },
     {
@@ -559,6 +562,7 @@ var multiModArchetype = {
       target: 'trap sense',
       description: '<p>An acrobat applies her trap sense bonus to Acrobatics checks. This modifies Trap Sense.</p>',
       matchedAssociation: { uuid: 'Compendium.pf1.class-abilities.TrapSense1', level: 3, resolvedName: 'Trap Sense' },
+      uuid: 'Compendium.pf1e-archetypes.pf-arch-features.Item.acrobat-trap-sense',
       source: 'auto-parse'
     }
   ]
@@ -616,12 +620,13 @@ test('Both copies have descriptions with modification instructions', () => {
   }
 });
 
-test('Both original base UUIDs still in classAssociations', () => {
+test('Both archetype feature UUIDs in classAssociations (replacing originals)', () => {
   var assocs = classItem2.system.links.classAssociations;
-  var sneak = assocs.find(a => a.uuid === 'Compendium.pf1.class-abilities.SneakAttack1');
-  var trap = assocs.find(a => a.uuid === 'Compendium.pf1.class-abilities.TrapSense1');
-  assertNotNull(sneak, 'Sneak Attack UUID should still be present');
-  assertNotNull(trap, 'Trap Sense UUID should still be present');
+  // After BUG-001 fix: modified entries use archetype feature UUIDs
+  var sneak = assocs.find(a => a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.Item.acrobat-sneak-attack');
+  var trap = assocs.find(a => a.uuid === 'Compendium.pf1e-archetypes.pf-arch-features.Item.acrobat-trap-sense');
+  assertNotNull(sneak, 'Archetype Sneak Attack UUID should be present');
+  assertNotNull(trap, 'Archetype Trap Sense UUID should be present');
 });
 
 // =====================================================
