@@ -41,6 +41,15 @@ Hooks.once('init', () => {
     default: true
   });
 
+  game.settings.register(MODULE_ID, 'autoCreateJEDB', {
+    name: 'Auto-Create Journal Database',
+    hint: 'When enabled, the module automatically creates the Archetype Manager DB JournalEntry on startup. Disable if you manage the journal manually or do not want automatic journal creation.',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true
+  });
+
   console.log(`${MODULE_TITLE} | Module initialized`);
 });
 
@@ -50,12 +59,16 @@ Hooks.once('init', () => {
 Hooks.once('ready', async () => {
   console.log(`${MODULE_TITLE} | Module ready, setting up database`);
 
-  // Auto-create JournalEntry database if it doesn't exist
-  await JournalEntryDB.ensureDatabase();
+  // Auto-create JournalEntry database if it doesn't exist (if setting enabled)
+  if (game.settings.get(MODULE_ID, 'autoCreateJEDB')) {
+    await JournalEntryDB.ensureDatabase();
+  } else {
+    console.log(`${MODULE_TITLE} | Auto-create JournalEntry database is disabled, skipping database creation`);
+  }
 
   // Make the module API available globally for macro access
   game.modules.get(MODULE_ID).api = {
-    open: ArchetypeManager.open,
+    open: (actor) => ArchetypeManager.open(actor),
     MODULE_ID,
     JE_DB_NAME
   };
