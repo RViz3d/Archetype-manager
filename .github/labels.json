@@ -21,7 +21,7 @@
   },
   {
     "name": "severity: critical",
-    "color": "b60205",
+    "color": "ff0000",
     "description": "Crash or data corruption"
   },
   {
