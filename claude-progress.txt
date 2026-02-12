@@ -2402,3 +2402,58 @@ Three critical bugs fixed:
 - Feature #73: 39/39 tests pass (updated for post-fix behavior)
 
 **Current Status:** 108/110 features passing (98.2%)
+
+### Session (2025-02-12) - Feature #104
+
+**Accomplished:**
+- Feature #104 (Actor sheet button click opens Archetype Manager for that actor): PASSED
+  - Section 1: Click handler retrieves actor from sheet and calls ArchetypeManager.open(actor) (4 tests)
+    - Click handler calls open with the sheet actor (correct name and id)
+    - Click handler passes sheet actor, NOT token actor even when token is selected
+    - Click handler uses closure so each sheet button references its own actor
+    - Click event has preventDefault and stopPropagation called
+  - Section 2: Clicking button opens the Archetype Manager main dialog (3 tests)
+    - UIManager.showMainDialog is called after button click
+    - Dialog instance is created
+    - Dialog contains archetype-manager class and class-select dropdown
+  - Section 3: Dialog pre-populated with correct actor's class items (4 tests)
+    - Dialog dropdown contains the actor's class name
+    - Multi-class actor: dropdown contains all classes (Fighter, Rogue, Wizard)
+    - Dropdown option values match class item IDs
+    - Dialog shows class level for each class
+  - Section 4: Button works without needing a token selected (3 tests)
+    - Works with no tokens selected on canvas (no "select a token" warning)
+    - Works even when canvas.tokens is undefined
+    - Bypasses token selection entirely via actor param path
+  - Section 5: Permission check for unauthorized users (4 tests)
+    - Non-GM, non-owner click shows permission warning
+    - GM can click on any actor sheet (even non-owned)
+    - Owner can click on owned actor sheet
+    - Permission denied: no dialog opened
+  - Section 6: Source code verification (5 tests)
+    - Hook extracts actor from app.actor
+    - Click handler calls ArchetypeManager.open(actor)
+    - Click handler calls preventDefault() and stopPropagation()
+    - Button uses addEventListener for click
+  - Section 7: End-to-end flow (2 tests)
+    - Full E2E: inject button → click → dialog opens with correct actor and all classes
+    - Full E2E: button click with no canvas tokens still opens dialog
+  - Section 8: Edge cases (3 tests)
+    - Multiple rapid clicks each invoke open() once (no stacking handlers)
+    - Re-rendered sheet button still calls open with correct actor
+    - Class item with system.levels (not level) works correctly
+  - Section 9: Primary entry point verification (3 tests)
+    - renderActorSheet hook is the primary user-facing entry point
+    - Click handler does not require any token to be selected
+    - Actor sheet button is distinct from token HUD button
+  - 31/31 tests passing (test/test-feature-104.mjs)
+
+**Code Changes:**
+- test/test-feature-104.mjs: New test suite (31 tests) - Actor sheet button click wiring
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All related test suites pass (zero regressions):
+  - Feature #102: 29/29, Feature #103: 39/39, Feature #105: 30/30
+
+**Current Status:** 109/110 features passing (99.1%)
