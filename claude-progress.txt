@@ -2361,3 +2361,44 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
   - Feature #108: 32/32, Feature #109: 41/41, Feature #92: 35/35
 
 **Current Status:** 107/110 features passing (approximately)
+
+### Session 14 (2025-02-12) - Feature #101: v0.1.1 Patch (3 Bug Fixes)
+
+**Feature #101: v0.1.1 Patch** - PASSED (32/32 tests)
+
+Three critical bugs fixed:
+
+**BUG-002 (Parser UUID):**
+- `CompendiumParser.parseArchetype()` now captures each archetype feature's own UUID
+- Added `uuid` field to both auto-parse and JE-fix paths
+- Format: `Compendium.{source}.pf-arch-features.Item.{id}` (fallback when feature.uuid missing)
+
+**BUG-001 (Applicator UUID):**
+- `Applicator._buildNewAssociations()` now uses `entry.archetypeFeature?.uuid` (archetype feature)
+- Previously used `matchedAssociation` which was the BASE feature UUID (effectively a no-op)
+- This was the root cause: applying an archetype replaced the base feature with... itself
+
+**BUG-003 (UI Remove Button):**
+- `UIManager.updateAppliedList()` now adds a remove button (✕) to each applied archetype tag
+- Click handler calls `UIManager.showRemoveConfirmation(actor, classItem, slug)`
+- After removal, both the applied list and archetype list are refreshed
+
+**Code Changes:**
+- scripts/compendium-parser.mjs: Added `uuid` field to parseArchetype() output (both paths)
+- scripts/applicator.mjs: Changed _buildNewAssociations to use archetypeFeature.uuid
+- scripts/ui-manager.mjs: Added remove button HTML and click handler to updateAppliedList()
+- test/test-feature-101.mjs: New test suite (32 tests covering all 3 bugs + E2E)
+- test/test-feature-38.mjs: Updated test data (`archetypeUuid` → `uuid`), fixed assertions
+- test/test-feature-39.mjs: Updated test data and 5 assertions for correct UUID behavior
+- test/test-feature-69.mjs: Added `uuid` fields, updated UUID assertion
+- test/test-feature-73.mjs: Updated test data, added settings re-registration after reload
+- test/foundry-mock.mjs: Added all module settings to setupMockEnvironment()
+
+**Verification:**
+- Feature #101: 32/32 tests pass
+- Feature #38: 44/44 tests pass (updated for post-fix behavior)
+- Feature #39: 44/44 tests pass (updated for post-fix behavior)
+- Feature #69: 109/109 tests pass (updated for post-fix behavior)
+- Feature #73: 39/39 tests pass (updated for post-fix behavior)
+
+**Current Status:** 108/110 features passing (98.2%)
