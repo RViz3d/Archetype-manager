@@ -44,7 +44,7 @@
     }
   ],
   "socket": false,
-  "url": "",
-  "manifest": "",
-  "download": ""
+  "url": "https://github.com/RViz3d/Archetype-manager",
+  "manifest": "https://raw.githubusercontent.com/RViz3d/Archetype-manager/main/module.json",
+  "download": "https://github.com/RViz3d/Archetype-manager/archive/refs/heads/main.zip"
 }
