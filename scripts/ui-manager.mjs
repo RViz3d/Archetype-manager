@@ -10,7 +10,7 @@
  * - Manual archetype entry dialog
  */
 
-import { MODULE_ID, MODULE_TITLE } from './module.mjs';
+import { MODULE_ID, MODULE_TITLE, debugLog } from './module.mjs';
 import { CompendiumParser } from './compendium-parser.mjs';
 import { DiffEngine } from './diff-engine.mjs';
 import { ConflictChecker } from './conflict-checker.mjs';
@@ -124,6 +124,15 @@ export class UIManager {
             };
 
             const combinedDiff = DiffEngine.generateDiff(resolvedBase, combinedParsed);
+
+            // Debug: log diff summary
+            const diffRemoved = combinedDiff.filter(d => d.status === 'removed');
+            const diffAdded = combinedDiff.filter(d => d.status === 'added');
+            const diffModified = combinedDiff.filter(d => d.status === 'modified');
+            const diffUnchanged = combinedDiff.filter(d => d.status === 'unchanged');
+            debugLog(`${MODULE_ID} | Diff summary: ${diffRemoved.length} removed, ${diffAdded.length} added, ${diffModified.length} modified, ${diffUnchanged.length} unchanged`);
+            if (diffRemoved.length > 0) debugLog(`${MODULE_ID} | Removed: ${diffRemoved.map(d => d.name).join(', ')}`);
+            if (diffAdded.length > 0) debugLog(`${MODULE_ID} | Added: ${diffAdded.map(d => d.name).join(', ')}`);
 
             // Show preview
             const result = await UIManager.showPreviewConfirmFlow(
@@ -1360,6 +1369,9 @@ export class UIManager {
     });
   }
 
+  // Cache for pf-arch-features pack (loaded once per session, shared across archetypes)
+  static _archFeaturesCache = null;
+
   /**
    * Parse an archetype on demand - loads features from compendium or JE and returns parsed data
    * @param {object} archData - The archetype data from the list { name, slug, source, class, _doc }
@@ -1369,9 +1381,10 @@ export class UIManager {
   static async _parseArchetypeOnDemand(archData, baseAssociations) {
     if (archData.source === 'compendium' && archData._doc) {
       const archetypeDoc = archData._doc;
-      // Get archetype's features from its classAssociations (pointing to pf-arch-features)
+
+      // Strategy 1: Try classAssociations on the archetype doc (some modules use this)
       const archAssociations = archetypeDoc.system?.links?.classAssociations || [];
-      const features = [];
+      let features = [];
       for (const assoc of archAssociations) {
         try {
           const doc = await fromUuid(assoc.uuid || assoc.id);
@@ -1381,8 +1394,33 @@ export class UIManager {
         }
       }
 
+      // Strategy 2: If no features found via classAssociations, search pf-arch-features by name
+      // pf1e-archetypes stores features separately with names like "FeatureName (ArchetypeName)"
+      if (features.length === 0) {
+        // Extract short archetype name from "Class (ArchetypeName)" format
+        const shortNameMatch = archData.name.match(/\((.+?)\)\s*$/);
+        const shortName = shortNameMatch ? shortNameMatch[1].trim() : archData.name;
+
+        debugLog(`${MODULE_ID} | No classAssociations on archetype doc, searching pf-arch-features for "${shortName}"`);
+
+        // Load and cache the features pack
+        if (!UIManager._archFeaturesCache) {
+          UIManager._archFeaturesCache = await CompendiumParser.loadArchetypeFeatures();
+          debugLog(`${MODULE_ID} | Cached ${UIManager._archFeaturesCache.length} archetype features`);
+        }
+
+        // Match features by archetype short name in parentheses at end of feature name
+        const namePattern = `(${shortName})`;
+        features = UIManager._archFeaturesCache.filter(f =>
+          f.name && f.name.includes(namePattern)
+        );
+
+        debugLog(`${MODULE_ID} | Found ${features.length} features for "${shortName}" via name matching`);
+      }
+
       const parsed = await CompendiumParser.parseArchetype(archetypeDoc, features, baseAssociations);
       parsed.class = archData.class || '';
+      debugLog(`${MODULE_ID} | Parsed "${archData.name}": ${parsed.features.length} features (${parsed.features.filter(f => f.type === 'replacement').length} replacements, ${parsed.features.filter(f => f.type === 'additive').length} additive)`);
       return parsed;
     } else {
       // JE-based archetype (missing/custom) - build from JE data
