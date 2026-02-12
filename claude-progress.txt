@@ -2457,3 +2457,39 @@ Three critical bugs fixed:
   - Feature #102: 29/29, Feature #103: 39/39, Feature #105: 30/30
 
 **Current Status:** 109/110 features passing (99.1%)
+
+### Session (2025-02-12) - Feature #106
+
+**Accomplished:**
+- Feature #106 (Register entry point location setting): PASSED
+  - Section 1: Setting registration in init hook (8 tests)
+    - entryPointLocation registered with type String, default 'both', scope 'world', config true
+    - Descriptive name ('Entry Point Location') and hint explaining the 3 options
+  - Section 2: Choices object (6 tests)
+    - Choices has exactly 3 options: actor-sheet, token-hud, both
+    - Choice labels are descriptive
+  - Section 3-5: renderActorSheet respects setting (3 tests)
+    - Button injected with 'both' and 'actor-sheet', NOT injected with 'token-hud'
+  - Section 6-8: renderTokenHUD respects setting (3 tests)
+    - Button injected with 'both' and 'token-hud', NOT injected with 'actor-sheet'
+  - Section 9: Dynamic setting changes (4 tests)
+  - Section 10: Source code verification (6 tests)
+  - Section 11: Integration with existing settings (3 tests) - 7 total settings
+  - Section 12: Edge cases (5 tests)
+  - 38/38 tests passing (test/test-feature-106.mjs)
+
+**Code Changes:**
+- scripts/module.mjs:
+  - Added entryPointLocation setting registration (String, default 'both', world, config: true, with choices)
+  - renderActorSheet hook: Added early return check on entryPointLocation
+  - renderTokenHUD hook: Added early return check on entryPointLocation
+- test/foundry-mock.mjs: Added entryPointLocation to pre-registered settings
+- test/test-feature-106.mjs: New test suite (38 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- Existing test suites pass (zero regressions):
+  - Feature #103: 39/39, Feature #105: 30/30
+  - Feature #108: 32/32, Feature #109: 41/41, Feature #110: 34/34, Feature #99: 28/28
+
+**Current Status:** 109/110 features passing (approximately)
