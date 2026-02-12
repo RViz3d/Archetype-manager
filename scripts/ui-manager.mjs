@@ -92,11 +92,18 @@ export class UIManager {
               return;
             }
 
-            // Build combined parsed data for selected archetypes
-            const selectedParsedList = [...dialogSelectedArchetypes].map(slug => {
+            // Get base class associations and resolve them for name display
+            const baseAssociations = dialogCurrentClassItem?.system?.links?.classAssociations || [];
+            const resolvedBase = await CompendiumParser.resolveAssociations(baseAssociations);
+
+            // Parse selected archetypes on demand (loads features from compendium/JE)
+            const selectedParsedList = [];
+            for (const slug of dialogSelectedArchetypes) {
               const arch = dialogArchetypeData.find(a => a.slug === slug);
-              return arch?.parsedData || { name: slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), slug, features: [] };
-            });
+              if (!arch) continue;
+              const parsed = await UIManager._parseArchetypeOnDemand(arch, baseAssociations);
+              selectedParsedList.push(parsed);
+            }
 
             // Final stacking validation including applied
             const fullStack = [...dialogAppliedArchetypeDataList, ...selectedParsedList];
@@ -107,30 +114,29 @@ export class UIManager {
               return;
             }
 
-            // Generate combined diff preview
+            // Generate combined diff preview with resolved base associations
             const selectedNames = selectedParsedList.map(a => a.name).join(' + ');
             const combinedParsed = {
               name: selectedNames,
               slug: [...dialogSelectedArchetypes].join('+'),
+              class: selectedParsedList[0]?.class || '',
               features: selectedParsedList.flatMap(a => a.features || [])
             };
 
-            // Build combined diff from base associations
-            const baseAssociations = dialogCurrentClassItem?.system?.links?.classAssociations || [];
-            const combinedDiff = DiffEngine.generateDiff(baseAssociations, combinedParsed);
+            const combinedDiff = DiffEngine.generateDiff(resolvedBase, combinedParsed);
 
             // Show preview
-            const result = await this.showPreviewConfirmFlow(
+            const result = await UIManager.showPreviewConfirmFlow(
               actor, dialogCurrentClassItem, combinedParsed, combinedDiff
             );
 
             if (result === 'applied') {
               // Apply each archetype sequentially
               for (const parsed of selectedParsedList) {
-                const diff = DiffEngine.generateDiff(
-                  dialogCurrentClassItem?.system?.links?.classAssociations || [],
-                  parsed
-                );
+                // Re-get current associations (they change after each apply) and resolve
+                const currentAssociations = dialogCurrentClassItem?.system?.links?.classAssociations || [];
+                const resolvedCurrent = await CompendiumParser.resolveAssociations(currentAssociations);
+                const diff = DiffEngine.generateDiff(resolvedCurrent, parsed);
                 await Applicator.apply(actor, dialogCurrentClassItem, parsed, diff);
               }
             }
@@ -204,14 +210,22 @@ export class UIManager {
             for (const arch of compendiumArchetypes) {
               // Archetype items in the compendium source module may have class info in flags or system
               const compendiumSource = CompendiumParser.getCompendiumSource();
-              const archClass = (arch.system?.class || arch.flags?.[compendiumSource]?.class || '').toLowerCase();
-              // Include if class matches, or if we can't determine class (show all)
-              if (!archClass || archClass === className || archClass === classTag2) {
+              let archClass = (arch.system?.class || arch.flags?.[compendiumSource]?.class || '').toLowerCase();
+              // Extract class from archetype name format "Class (ArchetypeName)" if not in system data
+              if (!archClass && arch.name) {
+                const nameMatch = arch.name.match(/^(.+?)\s*\(/);
+                if (nameMatch) {
+                  archClass = nameMatch[1].trim().toLowerCase();
+                }
+              }
+              // Only include archetypes that match the selected class
+              if (archClass === className || archClass === classTag2) {
                 archetypeData.push({
                   name: arch.name,
                   slug: arch.name.slugify?.() || arch.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                   source: 'compendium',
-                  class: archClass
+                  class: archClass,
+                  _doc: arch
                 });
               }
             }
@@ -1347,6 +1361,70 @@ export class UIManager {
   }
 
   /**
+   * Parse an archetype on demand - loads features from compendium or JE and returns parsed data
+   * @param {object} archData - The archetype data from the list { name, slug, source, class, _doc }
+   * @param {Array} baseAssociations - The base class classAssociations (raw, unresolved)
+   * @returns {Promise<object>} Parsed archetype data with features
+   */
+  static async _parseArchetypeOnDemand(archData, baseAssociations) {
+    if (archData.source === 'compendium' && archData._doc) {
+      const archetypeDoc = archData._doc;
+      // Get archetype's features from its classAssociations (pointing to pf-arch-features)
+      const archAssociations = archetypeDoc.system?.links?.classAssociations || [];
+      const features = [];
+      for (const assoc of archAssociations) {
+        try {
+          const doc = await fromUuid(assoc.uuid || assoc.id);
+          if (doc) features.push(doc);
+        } catch (e) {
+          // Feature couldn't be resolved - skip silently
+        }
+      }
+
+      const parsed = await CompendiumParser.parseArchetype(archetypeDoc, features, baseAssociations);
+      parsed.class = archData.class || '';
+      return parsed;
+    } else {
+      // JE-based archetype (missing/custom) - build from JE data
+      const jeData = await JournalEntryDB.getArchetype(archData.slug);
+      if (!jeData || !jeData.features) {
+        return {
+          name: archData.name,
+          slug: archData.slug,
+          class: archData.class || '',
+          features: []
+        };
+      }
+
+      const resolvedAssociations = await CompendiumParser.resolveAssociations(baseAssociations);
+      const features = [];
+      for (const [featureSlug, featureData] of Object.entries(jeData.features)) {
+        const featureName = featureSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        let matchedAssociation = null;
+        if (featureData.replaces) {
+          matchedAssociation = CompendiumParser.matchTarget(featureData.replaces, resolvedAssociations);
+        }
+        features.push({
+          name: featureName,
+          level: featureData.level,
+          type: featureData.replaces ? 'replacement' : 'additive',
+          target: featureData.replaces || null,
+          matchedAssociation,
+          description: featureData.description || '',
+          source: 'je-entry'
+        });
+      }
+
+      return {
+        name: archData.name || jeData.name || archData.slug,
+        slug: archData.slug,
+        class: archData.class || jeData.class || '',
+        features
+      };
+    }
+  }
+
+  /**
    * Build parsed archetype data for already-applied archetypes (for conflict checking)
    * Uses the archetype data list to find matching entries and build feature data.
    * @param {Item} classItem - The class item with applied archetype flags
@@ -1357,15 +1435,16 @@ export class UIManager {
     const applied = classItem?.getFlag?.(MODULE_ID, 'archetypes') || [];
     if (applied.length === 0) return [];
 
+    // Try to use stored parsed data from flags (set during apply)
+    const storedData = classItem?.getFlag?.(MODULE_ID, 'appliedArchetypeData') || {};
+
     const result = [];
     for (const slug of applied) {
-      // Try to find the archetype in our data
-      const archData = archetypeDataList.find(a => a.slug === slug);
-      if (archData?.parsedData) {
-        result.push(archData.parsedData);
+      // First check stored parsed data from flags
+      if (storedData[slug]) {
+        result.push(storedData[slug]);
       } else {
-        // Build minimal data from JE database if available
-        // Just use the slug as a placeholder with name derived from slug
+        // Build minimal data from slug as fallback
         const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         result.push({
           name: displayName,
