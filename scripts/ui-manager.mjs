@@ -17,6 +17,7 @@ import { ConflictChecker } from './conflict-checker.mjs';
 import { Applicator } from './applicator.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
 import { ScalableFeatures } from './scalable-features.mjs';
+import { CompatibilityDB } from './compatibility-db.mjs';
 
 export class UIManager {
   static _processing = false;
@@ -103,7 +104,8 @@ export class UIManager {
             for (const slug of dialogSelectedArchetypes) {
               const arch = dialogArchetypeData.find(a => a.slug === slug);
               if (!arch) continue;
-              const parsed = await UIManager._parseArchetypeOnDemand(arch, baseAssociations);
+              const currentClassName = dialogCurrentClassItem?.name?.toLowerCase() || '';
+              const parsed = await UIManager._parseArchetypeOnDemand(arch, baseAssociations, currentClassName);
               selectedParsedList.push(parsed);
             }
 
@@ -216,6 +218,9 @@ export class UIManager {
           archetypeListEl.innerHTML = '';
 
           try {
+            // Load CompatibilityDB (idempotent, cached after first load)
+            await CompatibilityDB.load();
+
             // Load archetypes from compendium
             const compendiumArchetypes = await CompendiumParser.loadArchetypeList();
 
@@ -377,8 +382,9 @@ export class UIManager {
           const applied = currentClassItem?.getFlag?.(MODULE_ID, 'archetypes') || [];
 
           // Use conflict index for real-time incompatibility display
+          const currentClassName = currentClassItem?.name?.toLowerCase() || '';
           const incompatible = conflictIndex.size > 0
-            ? ConflictChecker.getIncompatibleArchetypes(conflictIndex, selectedArchetypes, applied)
+            ? ConflictChecker.getIncompatibleArchetypes(conflictIndex, selectedArchetypes, applied, currentClassName)
             : new Map();
 
           archetypeListEl.innerHTML = filtered.map(arch => {
@@ -1443,9 +1449,10 @@ export class UIManager {
    * Parse an archetype on demand - loads features from compendium or JE and returns parsed data
    * @param {object} archData - The archetype data from the list { name, slug, source, class, _doc }
    * @param {Array} baseAssociations - The base class classAssociations (raw, unresolved)
+   * @param {string} [className] - Class name for CompatibilityDB lookup
    * @returns {Promise<object>} Parsed archetype data with features
    */
-  static async _parseArchetypeOnDemand(archData, baseAssociations) {
+  static async _parseArchetypeOnDemand(archData, baseAssociations, className) {
     if (archData.source === 'compendium' && archData._doc) {
       const archetypeDoc = archData._doc;
 
@@ -1485,9 +1492,9 @@ export class UIManager {
         debugLog(`${MODULE_ID} | Found ${features.length} features for "${shortName}" via name matching`);
       }
 
-      const parsed = await CompendiumParser.parseArchetype(archetypeDoc, features, baseAssociations);
+      const parsed = await CompendiumParser.parseArchetype(archetypeDoc, features, baseAssociations, className);
       parsed.class = archData.class || '';
-      debugLog(`${MODULE_ID} | Parsed "${archData.name}": ${parsed.features.length} features (${parsed.features.filter(f => f.type === 'replacement').length} replacements, ${parsed.features.filter(f => f.type === 'additive').length} additive)`);
+      debugLog(`${MODULE_ID} | Parsed "${archData.name}": ${parsed.features.length} features (${parsed.features.filter(f => f.type === 'replacement').length} replacements, ${parsed.features.filter(f => f.type === 'additive').length} additive, ${parsed.features.filter(f => f.source === 'db-assisted').length} DB-assisted)`);
       return parsed;
     } else {
       // JE-based archetype (missing/custom) - build from JE data
