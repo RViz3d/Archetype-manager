@@ -158,6 +158,26 @@
   opacity: 0.5;
 }
 
+/* === Filter Toolbar === */
+.archetype-manager-dialog .filter-toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.archetype-manager-dialog .hide-incompatible-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.archetype-manager-dialog .hide-incompatible-toggle input {
+  margin: 0;
+}
+
 /* === Archetype List === */
 .archetype-manager-dialog .archetype-list {
   max-height: min(400px, 40vh);
