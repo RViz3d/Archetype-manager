@@ -122,7 +122,8 @@ Hooks.on('renderActorSheet', (app, html, data) => {
   if (classItems.length === 0) return;
 
   // Prevent duplicate button injection on re-render
-  const container = html instanceof jQuery ? html[0] : html;
+  // Safely handle jQuery-wrapped html (FoundryVTT may pass jQuery or raw element)
+  const container = (typeof jQuery !== 'undefined' && html instanceof jQuery) ? html[0] : (html?.[0] ?? html);
   if (!container || typeof container.querySelector !== 'function') return;
   if (container.querySelector('.archetype-manager-sheet-btn')) return;
 
@@ -168,6 +169,60 @@ Hooks.on('renderActorSheet', (app, html, data) => {
   }
 
   debugLog(`${MODULE_TITLE} | Archetypes button injected for ${actor.name}`);
+});
+
+/**
+ * Inject "Archetypes" button into the Token HUD (right-click menu on tokens).
+ *
+ * Hooks into renderTokenHUD to add a button in the token HUD's button column.
+ * The button only appears for tokens whose actors have at least one class item.
+ * Clicking the button opens the Archetype Manager for the token's actor.
+ * The button icon and styling matches FoundryVTT's native token HUD design.
+ */
+Hooks.on('renderTokenHUD', (hud, html, tokenData) => {
+  const token = hud.object;
+  if (!token) return;
+
+  const actor = token.actor;
+  if (!actor) return;
+
+  // Only show button if the actor has class items
+  const classItems = actor.items?.filter?.(i => i.type === 'class') ?? [];
+  if (classItems.length === 0) return;
+
+  // Get the HTML container (handle jQuery-wrapped html)
+  const container = (typeof jQuery !== 'undefined' && html instanceof jQuery) ? html[0] : (html?.[0] ?? html);
+  if (!container || typeof container.querySelector !== 'function') return;
+
+  // Prevent duplicate button injection
+  if (container.querySelector('.archetype-manager-token-btn')) return;
+
+  // Find the right column (.col.right) for the button — FoundryVTT token HUD convention
+  const rightCol = container.querySelector('.col.right');
+  if (!rightCol) return;
+
+  // Create the HUD control button matching FoundryVTT's token HUD style
+  const controlIcon = document.createElement('div');
+  controlIcon.className = 'control-icon archetype-manager-token-btn';
+  controlIcon.title = 'Archetype Manager';
+  controlIcon.dataset.action = 'archetype-manager';
+
+  // Use a hat-wizard icon consistent with the sheet button
+  const icon = document.createElement('i');
+  icon.className = 'fas fa-hat-wizard';
+  controlIcon.appendChild(icon);
+
+  // Attach click handler to open the Archetype Manager for this token's actor
+  controlIcon.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ArchetypeManager.open(actor);
+  });
+
+  // Append to the right column
+  rightCol.appendChild(controlIcon);
+
+  debugLog(`${MODULE_TITLE} | Token HUD button injected for ${actor.name}`);
 });
 
 /**
