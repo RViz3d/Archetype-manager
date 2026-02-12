@@ -2142,3 +2142,51 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
   - Feature #99: 28/28, Feature #100: 35/35
 
 **Current Status:** 101/110 features passing (approximately)
+
+### Session (2025-02-12) - Feature #108
+
+**Accomplished:**
+- Feature #108 (Register chat notifications toggle setting): PASSED
+  - Section 1: Setting registration in init hook (8 tests)
+    - chatNotifications registered with type Boolean, default true, scope 'world', config true
+    - Descriptive name ('Chat Notifications') and hint explaining behavior
+    - Default value returns true via game.settings.get
+  - Section 2: _postApplyMessage respects chatNotifications (3 tests)
+    - With setting enabled (default), ChatMessage.create is called
+    - With setting disabled, ChatMessage.create is NOT called
+    - Returns early without error when disabled
+  - Section 3: _postRemoveMessage respects chatNotifications (3 tests)
+    - With setting enabled, ChatMessage.create is called
+    - With setting disabled, ChatMessage.create is NOT called
+    - Returns early without error when disabled
+  - Section 4: ui.notifications (toasts) NOT affected (3 tests)
+    - info, warn, error notifications all still work when chatNotifications=false
+  - Section 5: Source code verification (7 tests)
+    - module.mjs contains chatNotifications registration with correct params
+    - applicator.mjs _postApplyMessage checks chatNotifications
+    - applicator.mjs _postRemoveMessage checks chatNotifications
+  - Section 6: Integration with existing settings (3 tests)
+    - Coexists with all 5 module settings
+    - Changing chatNotifications does not affect other settings
+  - Section 7: Edge cases and toggling (5 tests)
+    - Setting can be toggled at runtime
+    - Chat messages resume when re-enabled
+    - Empty diff behavior correct for both enabled/disabled
+    - Hint mentions toast notifications not affected
+  - 32/32 tests passing (test/test-feature-108.mjs)
+
+**Code Changes:**
+- scripts/module.mjs:
+  - Added chatNotifications setting registration in init hook (Boolean, default true, world, config: true)
+  - Hint: 'When enabled, chat messages are posted when archetypes are applied or removed. Disable to suppress chat messages while still performing archetype operations. Toast notifications are not affected by this setting.'
+- scripts/applicator.mjs:
+  - _postApplyMessage: Added early return check on chatNotifications setting
+  - _postRemoveMessage: Added early return check on chatNotifications setting
+- test/test-feature-108.mjs: New test suite (32 tests) - Chat notifications toggle setting
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- Existing test suites pass (zero regressions from this change):
+  - Features #1-2-3: 26/26
+
+**Current Status:** 103/110 features passing
