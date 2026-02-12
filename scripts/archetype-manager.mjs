@@ -10,20 +10,30 @@ import { UIManager } from './ui-manager.mjs';
 
 export class ArchetypeManager {
   /**
-   * Open the archetype manager for the currently selected token
+   * Open the archetype manager for the given actor or currently selected token.
+   * @param {Actor} [actorParam] - Optional actor to open the manager for.
+   *   When provided, skips token selection validation and uses this actor directly.
+   *   When omitted, falls back to the currently selected canvas token.
    */
-  static async open() {
-    // Validate a token is selected
-    const token = canvas.tokens.controlled[0];
-    if (!token) {
-      ui.notifications.warn(`${MODULE_TITLE} | Please select a token first.`);
-      return;
-    }
+  static async open(actorParam) {
+    let actor;
 
-    const actor = token.actor;
-    if (!actor) {
-      ui.notifications.warn(`${MODULE_TITLE} | Selected token has no actor.`);
-      return;
+    if (actorParam) {
+      // Use the provided actor directly — skip token validation
+      actor = actorParam;
+    } else {
+      // Fall back to token-based selection
+      const token = canvas.tokens.controlled[0];
+      if (!token) {
+        ui.notifications.warn(`${MODULE_TITLE} | Please select a token first.`);
+        return;
+      }
+
+      actor = token.actor;
+      if (!actor) {
+        ui.notifications.warn(`${MODULE_TITLE} | Selected token has no actor.`);
+        return;
+      }
     }
 
     // Permission check: players can only modify owned characters
