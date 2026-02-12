@@ -104,6 +104,73 @@ Hooks.once('ready', async () => {
 });
 
 /**
+ * Inject "Archetypes" button into PF1e character sheets.
+ *
+ * Hooks into renderActorSheet to add an 'Archetypes' button near the class
+ * section / features tab area. The button only appears on character-type actors
+ * that have at least one class item. Clicking the button opens the Archetype Manager.
+ */
+Hooks.on('renderActorSheet', (app, html, data) => {
+  const actor = app.actor;
+  if (!actor) return;
+
+  // Only inject on character-type actors (not NPCs or other types unless they have class items)
+  const actorType = actor.type ?? actor.data?.type;
+  const classItems = actor.items?.filter?.(i => i.type === 'class') ?? [];
+
+  // Skip if no class items — no archetypes to manage
+  if (classItems.length === 0) return;
+
+  // Prevent duplicate button injection on re-render
+  const container = html instanceof jQuery ? html[0] : html;
+  if (!container || typeof container.querySelector !== 'function') return;
+  if (container.querySelector('.archetype-manager-sheet-btn')) return;
+
+  // Create the Archetypes button
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'archetype-manager-sheet-btn';
+  btn.title = 'Open Archetype Manager';
+  btn.innerHTML = '<i class="fas fa-hat-wizard"></i> Archetypes';
+
+  // Attach click handler to open the Archetype Manager for this actor
+  btn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    ArchetypeManager.open(actor);
+  });
+
+  // Find insertion point — look for common PF1e sheet areas near class features
+  // Try multiple selectors in priority order for PF1e compatibility
+  const insertionSelectors = [
+    '.tab[data-tab="features"] .inventory-header',  // Features tab header
+    '.tab[data-tab="features"] h3',                   // Features tab heading
+    '.features .inventory-header',                     // Features section header
+    '.class-features-header',                         // Class features header
+    '.tab[data-tab="features"]',                       // Features tab container
+    '.sheet-body'                                       // Fallback: sheet body
+  ];
+
+  let inserted = false;
+  for (const selector of insertionSelectors) {
+    const target = container.querySelector(selector);
+    if (target) {
+      // Insert the button as the first child or prepend to the target area
+      target.insertBefore(btn, target.firstChild);
+      inserted = true;
+      break;
+    }
+  }
+
+  // Last resort: append to the container itself
+  if (!inserted) {
+    container.appendChild(btn);
+  }
+
+  debugLog(`${MODULE_TITLE} | Archetypes button injected for ${actor.name}`);
+});
+
+/**
  * Debug-aware logging utility.
  * Logs to console.log only when the 'debugLogging' setting is enabled.
  * console.warn and console.error are NOT affected — they always print.

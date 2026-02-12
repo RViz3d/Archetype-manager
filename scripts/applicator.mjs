@@ -10,7 +10,7 @@
  * - Archetype removal and restoration
  */
 
-import { MODULE_ID, MODULE_TITLE } from './module.mjs';
+import { MODULE_ID, MODULE_TITLE, debugLog } from './module.mjs';
 import { DiffEngine } from './diff-engine.mjs';
 import { ConflictChecker } from './conflict-checker.mjs';
 
@@ -451,7 +451,7 @@ export class Applicator {
       // Delete any copies created during failed apply
       await this._deleteCreatedCopies(actor, slug);
 
-      console.log(`${MODULE_ID} | Successfully rolled back archetype application`);
+      debugLog(`${MODULE_ID} | Successfully rolled back archetype application`);
     } catch (e) {
       console.error(`${MODULE_ID} | Rollback also failed:`, e);
     }

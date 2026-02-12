@@ -9,7 +9,7 @@
  * Data is stored as JSON in JournalEntry pages.
  */
 
-import { MODULE_ID, JE_DB_NAME } from './module.mjs';
+import { MODULE_ID, JE_DB_NAME, debugLog } from './module.mjs';
 
 export class JournalEntryDB {
   static SECTIONS = ['fixes', 'missing', 'custom'];
@@ -20,7 +20,7 @@ export class JournalEntryDB {
   static async ensureDatabase() {
     let je = game.journal.getName(JE_DB_NAME);
     if (!je) {
-      console.log(`${MODULE_ID} | Creating JournalEntry database: ${JE_DB_NAME}`);
+      debugLog(`${MODULE_ID} | Creating JournalEntry database: ${JE_DB_NAME}`);
       je = await JournalEntry.create({
         name: JE_DB_NAME,
         pages: this.SECTIONS.map(section => ({
