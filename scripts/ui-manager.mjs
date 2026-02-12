@@ -202,8 +202,9 @@ export class UIManager {
 
             // Compendium archetypes (filtered by class)
             for (const arch of compendiumArchetypes) {
-              // Archetype items in the pf1e-archetypes module may have class info in flags or system
-              const archClass = (arch.system?.class || arch.flags?.['pf1e-archetypes']?.class || '').toLowerCase();
+              // Archetype items in the compendium source module may have class info in flags or system
+              const compendiumSource = CompendiumParser.getCompendiumSource();
+              const archClass = (arch.system?.class || arch.flags?.[compendiumSource]?.class || '').toLowerCase();
               // Include if class matches, or if we can't determine class (show all)
               if (!archClass || archClass === className || archClass === classTag2) {
                 archetypeData.push({
@@ -280,10 +281,29 @@ export class UIManager {
           } else {
             appliedListEl.innerHTML = applied.map(slug => {
               const displayName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-              return `<span class="applied-archetype-tag" style="display:inline-block; background:rgba(0,128,0,0.1); border:1px solid #080; border-radius:3px; padding:2px 6px; margin:2px; font-size:0.9em;">
+              return `<span class="applied-archetype-tag" data-slug="${slug}" style="display:inline-flex; align-items:center; background:rgba(0,128,0,0.1); border:1px solid #080; border-radius:3px; padding:2px 6px; margin:2px; font-size:0.9em;">
                 <i class="fas fa-check" style="color:#080; margin-right:2px;"></i>${displayName}
+                <button class="remove-applied-btn" data-slug="${slug}" title="Remove ${displayName}" style="border:none; background:none; cursor:pointer; color:#c00; margin-left:4px; padding:0 2px; font-size:1em; line-height:1;">
+                  <i class="fas fa-times"></i>
+                </button>
               </span>`;
             }).join('');
+
+            // Attach click handlers to remove buttons
+            appliedListEl.querySelectorAll('.remove-applied-btn').forEach(btn => {
+              btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const removeSlug = btn.dataset.slug;
+                if (!removeSlug || !currentClassItem) return;
+
+                const removed = await UIManager.showRemoveConfirmation(actor, currentClassItem, removeSlug);
+                if (removed) {
+                  // Refresh the applied list and archetype list after removal
+                  updateAppliedList();
+                  renderArchetypeList();
+                }
+              });
+            });
           }
         };
 

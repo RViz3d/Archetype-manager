@@ -301,6 +301,14 @@ export function setupMockEnvironment() {
   globalThis.ChatMessage = { create: async (data) => data };
   globalThis.canvas = { tokens: { controlled: [] } };
 
+  // Register default module settings so tests don't fail on settings.get()
+  settings.register('archetype-manager', 'lastSelectedClass', { default: '' });
+  settings.register('archetype-manager', 'showParseWarnings', { default: true });
+  settings.register('archetype-manager', 'autoCreateJEDB', { default: true });
+  settings.register('archetype-manager', 'chatNotifications', { default: true });
+  settings.register('archetype-manager', 'defaultCompendiumSource', { default: 'pf1e-archetypes' });
+  settings.register('archetype-manager', 'debugLogging', { default: false });
+
   // foundry utils
   globalThis.foundry = {
     utils: {

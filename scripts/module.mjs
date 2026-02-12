@@ -20,7 +20,7 @@ const JE_DB_NAME = 'Archetype Manager DB';
  * Module initialization - register settings and prepare module
  */
 Hooks.once('init', () => {
-  console.log(`${MODULE_TITLE} | Initializing module`);
+  debugLog(`${MODULE_TITLE} | Initializing module`);
 
   // Register module settings
   game.settings.register(MODULE_ID, 'lastSelectedClass', {
@@ -68,20 +68,29 @@ Hooks.once('init', () => {
     default: 'pf1e-archetypes'
   });
 
-  console.log(`${MODULE_TITLE} | Module initialized`);
+  game.settings.register(MODULE_ID, 'debugLogging', {
+    name: 'Debug Logging',
+    hint: 'When enabled, verbose console output is displayed for troubleshooting. When disabled (default), informational console.log messages are suppressed — only warnings and errors remain active.',
+    scope: 'client',
+    config: true,
+    type: Boolean,
+    default: false
+  });
+
+  debugLog(`${MODULE_TITLE} | Module initialized`);
 });
 
 /**
  * Module ready - set up JournalEntry database and register macro
  */
 Hooks.once('ready', async () => {
-  console.log(`${MODULE_TITLE} | Module ready, setting up database`);
+  debugLog(`${MODULE_TITLE} | Module ready, setting up database`);
 
   // Auto-create JournalEntry database if it doesn't exist (if setting enabled)
   if (game.settings.get(MODULE_ID, 'autoCreateJEDB')) {
     await JournalEntryDB.ensureDatabase();
   } else {
-    console.log(`${MODULE_TITLE} | Auto-create JournalEntry database is disabled, skipping database creation`);
+    debugLog(`${MODULE_TITLE} | Auto-create JournalEntry database is disabled, skipping database creation`);
   }
 
   // Make the module API available globally for macro access
@@ -91,7 +100,25 @@ Hooks.once('ready', async () => {
     JE_DB_NAME
   };
 
-  console.log(`${MODULE_TITLE} | Module fully loaded and ready`);
+  debugLog(`${MODULE_TITLE} | Module fully loaded and ready`);
 });
 
-export { MODULE_ID, MODULE_TITLE, JE_DB_NAME };
+/**
+ * Debug-aware logging utility.
+ * Logs to console.log only when the 'debugLogging' setting is enabled.
+ * console.warn and console.error are NOT affected — they always print.
+ * @param  {...any} args - Arguments to pass to console.log
+ */
+function debugLog(...args) {
+  try {
+    if (game.settings.get(MODULE_ID, 'debugLogging')) {
+      console.log(...args);
+    }
+  } catch (e) {
+    // Setting may not be registered yet (e.g., during early init before settings are registered)
+    // In that case, log anyway to avoid swallowing important startup messages
+    console.log(...args);
+  }
+}
+
+export { MODULE_ID, MODULE_TITLE, JE_DB_NAME, debugLog };

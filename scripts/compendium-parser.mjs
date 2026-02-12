@@ -10,7 +10,7 @@
  * - Merging JournalEntry fixes over automatic parse results
  */
 
-import { MODULE_ID } from './module.mjs';
+import { MODULE_ID, debugLog } from './module.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
 
 export class CompendiumParser {
@@ -21,10 +21,24 @@ export class CompendiumParser {
   static AS_BUT_REGEX = /as the .+? (?:class feature|ability),?\s+but/i;
 
   /**
-   * Check if the pf1e-archetypes module is available
+   * Get the configured compendium source module ID
+   * @returns {string} The module ID for archetype data packs
+   */
+  static getCompendiumSource() {
+    try {
+      return game.settings.get(MODULE_ID, 'defaultCompendiumSource') || 'pf1e-archetypes';
+    } catch (e) {
+      // Setting may not be registered yet (e.g., during early init)
+      return 'pf1e-archetypes';
+    }
+  }
+
+  /**
+   * Check if the compendium source module is available
    */
   static isModuleAvailable() {
-    const module = game.modules.get('pf1e-archetypes');
+    const source = this.getCompendiumSource();
+    const module = game.modules.get(source);
     return module?.active ?? false;
   }
 
@@ -34,20 +48,23 @@ export class CompendiumParser {
    */
   static async loadArchetypeList() {
     if (!this.isModuleAvailable()) {
-      console.log(`${MODULE_ID} | pf1e-archetypes module not available, using JE-only mode`);
+      const source = this.getCompendiumSource();
+      debugLog(`${MODULE_ID} | ${source} module not available, using JE-only mode`);
       return [];
     }
 
     try {
-      const pack = game.packs.get('pf1e-archetypes.pf-archetypes');
-      if (!pack) throw new Error('Could not access pf-archetypes pack');
+      const source = this.getCompendiumSource();
+      const pack = game.packs.get(`${source}.pf-archetypes`);
+      if (!pack) throw new Error(`Could not access ${source}.pf-archetypes pack`);
 
       const documents = await pack.getDocuments();
-      console.log(`${MODULE_ID} | Loaded ${documents.length} archetypes from compendium`);
+      debugLog(`${MODULE_ID} | Loaded ${documents.length} archetypes from ${source} compendium`);
       return documents;
     } catch (e) {
       console.error(`${MODULE_ID} | Failed to load archetype list:`, e);
-      ui.notifications.error('Archetype Manager: Failed to load archetype compendium. Check that pf1e-archetypes module is enabled.');
+      const source = this.getCompendiumSource();
+      ui.notifications.error(`Archetype Manager: Failed to load archetype compendium. Check that ${source} module is enabled.`);
       return [];
     }
   }
@@ -60,11 +77,12 @@ export class CompendiumParser {
     if (!this.isModuleAvailable()) return [];
 
     try {
-      const pack = game.packs.get('pf1e-archetypes.pf-arch-features');
-      if (!pack) throw new Error('Could not access pf-arch-features pack');
+      const source = this.getCompendiumSource();
+      const pack = game.packs.get(`${source}.pf-arch-features`);
+      if (!pack) throw new Error(`Could not access ${source}.pf-arch-features pack`);
 
       const documents = await pack.getDocuments();
-      console.log(`${MODULE_ID} | Loaded ${documents.length} archetype features from compendium`);
+      debugLog(`${MODULE_ID} | Loaded ${documents.length} archetype features from ${source} compendium`);
       return documents;
     } catch (e) {
       console.error(`${MODULE_ID} | Failed to load archetype features:`, e);
@@ -232,6 +250,7 @@ export class CompendiumParser {
    */
   static async parseArchetype(archetype, features, baseAssociations) {
     const slug = archetype.name.slugify();
+    const source = this.getCompendiumSource();
 
     // Check JE for fixes first
     const jeFix = await JournalEntryDB.getArchetype(slug);
@@ -253,6 +272,7 @@ export class CompendiumParser {
         parsed.features.push({
           name: feature.name,
           ...jeFix.features[featureSlug],
+          uuid: feature.uuid || `Compendium.${source}.pf-arch-features.Item.${feature.id}`,
           source: 'je-fix'
         });
         continue;
@@ -273,6 +293,7 @@ export class CompendiumParser {
         type: classification.type,
         target: classification.target,
         matchedAssociation,
+        uuid: feature.uuid || `Compendium.${source}.pf-arch-features.Item.${feature.id}`,
         description: desc,
         source: 'auto-parse',
         needsUserInput: classification.type === 'unknown' ||

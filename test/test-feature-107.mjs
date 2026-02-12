@@ -424,7 +424,7 @@ test('autoCreateJEDB coexists with showParseWarnings setting', () => {
   assert(game.settings.isRegistered('archetype-manager', 'autoCreateJEDB'), 'autoCreateJEDB should be registered');
 });
 
-test('Module registers exactly 3 settings after init', () => {
+test('Module registers at least 3 settings after init (including autoCreateJEDB)', () => {
   const freshEnv = setupMockEnvironment();
 
   // Simulate init hook
@@ -438,12 +438,16 @@ test('Module registers exactly 3 settings after init', () => {
     scope: 'world', config: true, type: Boolean, default: true
   });
 
-  // Count registered settings for archetype-manager
+  // Count registered settings for archetype-manager (may include additional settings from other features)
   let count = 0;
   for (const [key] of game.settings._registered) {
     if (key.startsWith('archetype-manager.')) count++;
   }
-  assertEqual(count, 3, 'Should have exactly 3 settings registered');
+  assert(count >= 3, `Should have at least 3 settings registered, got ${count}`);
+  // Verify the 3 core settings are present
+  assert(game.settings.isRegistered('archetype-manager', 'lastSelectedClass'), 'lastSelectedClass should be registered');
+  assert(game.settings.isRegistered('archetype-manager', 'showParseWarnings'), 'showParseWarnings should be registered');
+  assert(game.settings.isRegistered('archetype-manager', 'autoCreateJEDB'), 'autoCreateJEDB should be registered');
 });
 
 // =====================================================
