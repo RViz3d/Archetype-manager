@@ -16,6 +16,7 @@ import { DiffEngine } from './diff-engine.mjs';
 import { ConflictChecker } from './conflict-checker.mjs';
 import { Applicator } from './applicator.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
+import { ScalableFeatures } from './scalable-features.mjs';
 
 export class UIManager {
   static _processing = false;
@@ -78,6 +79,7 @@ export class UIManager {
     let dialogArchetypeData = [];
     let dialogCurrentClassItem = null;
     let dialogAppliedArchetypeDataList = [];
+    let dialogConflictIndex = new Map(); // Pre-computed: slug -> Set<touched features>
 
     const dialogInstance = new Dialog({
       title: `${MODULE_TITLE} - ${actor.name}`,
@@ -123,7 +125,8 @@ export class UIManager {
               features: selectedParsedList.flatMap(a => a.features || [])
             };
 
-            const combinedDiff = DiffEngine.generateDiff(resolvedBase, combinedParsed);
+            const diffClassName = dialogCurrentClassItem?.name || '';
+            const combinedDiff = DiffEngine.generateDiff(resolvedBase, combinedParsed, diffClassName);
 
             // Debug: log diff summary
             const diffRemoved = combinedDiff.filter(d => d.status === 'removed');
@@ -145,7 +148,7 @@ export class UIManager {
                 // Re-get current associations (they change after each apply) and resolve
                 const currentAssociations = dialogCurrentClassItem?.system?.links?.classAssociations || [];
                 const resolvedCurrent = await CompendiumParser.resolveAssociations(currentAssociations);
-                const diff = DiffEngine.generateDiff(resolvedCurrent, parsed);
+                const diff = DiffEngine.generateDiff(resolvedCurrent, parsed, diffClassName);
                 await Applicator.apply(actor, dialogCurrentClassItem, parsed, diff);
               }
             }
@@ -155,7 +158,13 @@ export class UIManager {
           icon: '<i class="fas fa-plus"></i>',
           label: 'Add Archetype',
           callback: async () => {
-            await this.showManualEntryDialog('custom');
+            // Pass current class context for the dropdown
+            const classContext = dialogCurrentClassItem ? {
+              className: dialogCurrentClassItem.name,
+              classTag: dialogCurrentClassItem.system?.tag || '',
+              associations: dialogCurrentClassItem.system?.links?.classAssociations || []
+            } : null;
+            await this.showManualEntryDialog('custom', classContext);
           }
         },
         close: {
@@ -178,6 +187,7 @@ export class UIManager {
         let currentClassItem = null;
         let appliedArchetypeDataList = [];
         let selectedArchetypes = dialogSelectedArchetypes;
+        let conflictIndex = new Map(); // Pre-computed conflict index for real-time UI
 
         // Sync function: call after modifying local state
         const syncToDialogScope = () => {
@@ -186,6 +196,7 @@ export class UIManager {
           dialogCurrentClassItem = currentClassItem;
           dialogAppliedArchetypeDataList.length = 0;
           dialogAppliedArchetypeDataList.push(...appliedArchetypeDataList);
+          dialogConflictIndex = conflictIndex;
         };
 
         /**
@@ -273,6 +284,18 @@ export class UIManager {
             // Build parsed data for already-applied archetypes (for conflict checking)
             appliedArchetypeDataList = this._buildAppliedArchetypeData(currentClassItem, archetypeData);
 
+            // Build conflict index for real-time incompatibility display
+            // Uses cached pf-arch-features to pre-compute which features each archetype touches
+            if (!UIManager._archFeaturesCache) {
+              UIManager._archFeaturesCache = await CompendiumParser.loadArchetypeFeatures();
+            }
+            if (UIManager._archFeaturesCache.length > 0) {
+              conflictIndex = ConflictChecker.buildConflictIndex(
+                UIManager._archFeaturesCache, archetypeData, className
+              );
+              debugLog(`${MODULE_ID} | Built conflict index for ${conflictIndex.size} archetypes`);
+            }
+
           } catch (e) {
             console.error(`${MODULE_ID} | Error loading archetypes:`, e);
           }
@@ -353,31 +376,38 @@ export class UIManager {
           // Check applied archetypes
           const applied = currentClassItem?.getFlag?.(MODULE_ID, 'archetypes') || [];
 
+          // Use conflict index for real-time incompatibility display
+          const incompatible = conflictIndex.size > 0
+            ? ConflictChecker.getIncompatibleArchetypes(conflictIndex, selectedArchetypes, applied)
+            : new Map();
+
           archetypeListEl.innerHTML = filtered.map(arch => {
             const isApplied = applied.includes(arch.slug);
             const isSelected = selectedArchetypes.has(arch.slug);
+            const isIncompatible = incompatible.has(arch.slug);
+            const incompatReason = incompatible.get(arch.slug) || '';
             const appliedClass = isApplied ? ' applied' : '';
             const selectedClass = isSelected ? ' selected' : '';
+            const incompatClass = isIncompatible ? ' incompatible' : '';
             const sourceIcon = arch.source === 'compendium' ? 'fa-book' :
                                arch.source === 'missing' ? 'fa-exclamation-triangle' : 'fa-user';
             const sourceLabel = arch.source === 'compendium' ? 'From compendium' :
                                 arch.source === 'missing' ? 'Official (added manually)' : 'Custom/Homebrew';
 
-            // Check conflicts against applied archetypes
+            // Incompatibility indicator (replaces old parsedData-dependent check)
             let conflictWarning = '';
-            let hasConflict = false;
-            if (!isApplied && arch.parsedData && appliedArchetypeDataList.length > 0) {
-              const conflicts = ConflictChecker.checkAgainstApplied(arch.parsedData, appliedArchetypeDataList);
-              if (conflicts.length > 0) {
-                hasConflict = true;
-                const conflictNames = conflicts.map(c => c.featureName).join(', ');
-                conflictWarning = `<span class="status-icon conflict-warning" title="Conflicts with applied archetype(s): ${conflictNames}" style="color: #da0;">
-                  <i class="fas fa-exclamation-triangle"></i>
-                </span>`;
-              }
+            if (isIncompatible) {
+              conflictWarning = `<span class="status-icon conflict-warning" title="${incompatReason}" style="color: #c00;">
+                <i class="fas fa-ban"></i>
+              </span>`;
             }
 
-            return `<div class="archetype-item${appliedClass}${selectedClass}" data-slug="${arch.slug}" data-source="${arch.source}" data-has-conflict="${hasConflict}" tabindex="0" role="option" aria-selected="${dialogSelectedArchetypes.has(arch.slug) ? 'true' : 'false'}">
+            // Inline styles for incompatible items: grayed out with strikethrough
+            const incompatStyle = isIncompatible
+              ? ' style="opacity: 0.5; text-decoration: line-through; pointer-events: auto; cursor: not-allowed;"'
+              : '';
+
+            return `<div class="archetype-item${appliedClass}${selectedClass}${incompatClass}" data-slug="${arch.slug}" data-source="${arch.source}" data-incompatible="${isIncompatible}" data-incompat-reason="${incompatReason}" tabindex="0" role="option" aria-selected="${selectedArchetypes.has(arch.slug) ? 'true' : 'false'}"${incompatStyle}>
               <span class="archetype-name">${arch.name}</span>
               <span class="archetype-indicators">
                 ${conflictWarning}
@@ -392,7 +422,6 @@ export class UIManager {
 
           // Add click and keyboard handlers for archetype items
           archetypeListEl.querySelectorAll('.archetype-item').forEach(item => {
-            // Keyboard support: Enter/Space to select archetype
             item.addEventListener('keydown', (e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -400,57 +429,30 @@ export class UIManager {
               }
             });
             item.addEventListener('click', (e) => {
-              // Don't trigger on info button clicks
               if (e.target.closest('.info-btn')) return;
 
               const slug = item.dataset.slug;
-              const hasConflict = item.dataset.hasConflict === 'true';
               const isApplied = item.classList.contains('applied');
+              const isIncompatible = item.dataset.incompatible === 'true';
 
-              // Don't allow selecting already-applied archetypes
               if (isApplied) return;
 
-              // Warn and block if conflict with applied archetypes
-              if (hasConflict) {
-                const arch = archetypeData.find(a => a.slug === slug);
-                if (arch && arch.parsedData) {
-                  const conflicts = ConflictChecker.checkAgainstApplied(arch.parsedData, appliedArchetypeDataList);
-                  const conflictDetails = conflicts.map(c =>
-                    `"${c.featureA}" (${c.archetypeA}) conflicts with "${c.featureB}" (${c.archetypeB}) over ${c.featureName}`
-                  ).join('\n');
-                  ui.notifications.warn(`${MODULE_TITLE} | Cannot select ${arch.name}: conflicts with applied archetype(s).\n${conflictDetails}`);
-                } else {
-                  ui.notifications.warn(`${MODULE_TITLE} | This archetype conflicts with an already-applied archetype.`);
-                }
+              // Block incompatible archetypes with explanation
+              if (isIncompatible) {
+                const reason = item.dataset.incompatReason || 'Incompatible with selected/applied archetype(s)';
+                ui.notifications.warn(`${MODULE_TITLE} | Cannot select: ${reason}`);
                 return;
               }
 
-              // Toggle multi-selection
+              // Toggle selection and re-render to update incompatibility display
               if (selectedArchetypes.has(slug)) {
                 selectedArchetypes.delete(slug);
-                item.classList.remove('selected');
               } else {
-                // Check stacking conflicts with other selected archetypes
-                const newArch = archetypeData.find(a => a.slug === slug);
-                if (newArch?.parsedData && selectedArchetypes.size > 0) {
-                  const selectedDataList = [...selectedArchetypes].map(s => {
-                    const a = archetypeData.find(x => x.slug === s);
-                    return a?.parsedData;
-                  }).filter(Boolean);
-
-                  const allToValidate = [...selectedDataList, ...appliedArchetypeDataList];
-                  const conflicts = ConflictChecker.checkAgainstApplied(newArch.parsedData, allToValidate);
-
-                  if (conflicts.length > 0) {
-                    const conflictDetails = conflicts.map(c => c.featureName).join(', ');
-                    ui.notifications.warn(`${MODULE_TITLE} | Cannot add ${newArch.name}: conflicts over ${conflictDetails}`);
-                    return;
-                  }
-                }
-
                 selectedArchetypes.add(slug);
-                item.classList.add('selected');
               }
+
+              // Re-render to update grayed-out state for all items
+              renderArchetypeList();
             });
           });
 
@@ -1126,7 +1128,28 @@ export class UIManager {
    * @param {string} defaultType - 'missing' or 'custom'
    * @returns {string} HTML content
    */
-  static _buildManualEntryHTML(defaultType = 'custom') {
+  static _buildManualEntryHTML(defaultType = 'custom', expandedFeatures = []) {
+    // Build the "Replaces" dropdown options
+    const replacesOptions = expandedFeatures.length > 0
+      ? expandedFeatures.map(f => {
+        const val = f._isSeriesHeader
+          ? `series:${f._baseName}`
+          : f._isTier
+            ? `tier:${f._baseName}:${f._tier}`
+            : f.resolvedName || f.uuid;
+        const label = f.displayName || f.resolvedName || f.uuid;
+        const isHeader = f._isSeriesHeader;
+        return `<option value="${val}" ${isHeader ? 'style="font-weight:bold;"' : ''}>${label}</option>`;
+      }).join('\n              ')
+      : '';
+
+    const replacesField = expandedFeatures.length > 0
+      ? `<select name="feat-replaces-0" style="flex:2">
+              <option value="">-- None (Additive) --</option>
+              ${replacesOptions}
+            </select>`
+      : `<input type="text" name="feat-replaces-0" placeholder="Replaces (or blank)" style="flex:2" />`;
+
     return `
       <form class="archetype-manual-entry" autocomplete="off">
         <div class="form-group">
@@ -1147,13 +1170,14 @@ export class UIManager {
         <hr/>
         <h3 style="margin: 8px 0 4px;">Features</h3>
         <p style="font-size: 0.85em; color: #666; margin-bottom: 8px;">
-          Add each feature this archetype grants. Specify what base class feature it replaces (if any).
+          Add each feature this archetype grants. Use the "Replaces" dropdown to select which base class feature it replaces.
+          For scalable features (Weapon Training, Armor Training, etc.), you can target a specific tier.
         </p>
         <div class="feature-rows">
           <div class="feature-row" data-index="0">
             <input type="text" name="feat-name-0" placeholder="Feature name" style="flex:2" />
             <input type="number" name="feat-level-0" placeholder="Lvl" min="1" max="20" style="flex:0 0 50px; text-align:center" />
-            <input type="text" name="feat-replaces-0" placeholder="Replaces (or blank)" style="flex:2" />
+            ${replacesField}
             <button type="button" class="remove-feature-btn" data-index="0" title="Remove" style="flex:0 0 30px; cursor:pointer;">✕</button>
           </div>
         </div>
@@ -1214,9 +1238,27 @@ export class UIManager {
       hasFeatures = true;
 
       const slug = this._slugify(name);
+
+      // Parse the replaces value - may be a dropdown value with special prefixes
+      let replacesValue = replaces || null;
+      let replacesScalable = null;
+      if (replaces) {
+        if (replaces.startsWith('series:')) {
+          // Replacing entire scalable series (e.g., "series:weapon training")
+          replacesValue = replaces.substring(7); // strip prefix
+          replacesScalable = { type: 'series', baseName: replacesValue };
+        } else if (replaces.startsWith('tier:')) {
+          // Replacing specific tier (e.g., "tier:weapon training:3")
+          const parts = replaces.substring(5).split(':');
+          replacesValue = `${parts[0]} ${parts[1]}`;
+          replacesScalable = { type: 'tier', baseName: parts[0], tier: parseInt(parts[1]) };
+        }
+      }
+
       features[slug] = {
         level,
-        replaces: replaces || null,
+        replaces: replacesValue,
+        scalable: replacesScalable,
         description: ''
       };
     }
@@ -1247,14 +1289,21 @@ export class UIManager {
    * @param {string} defaultType - 'missing' or 'custom'
    * @returns {Promise<object|null>} The entered archetype data or null
    */
-  static async showManualEntryDialog(defaultType = 'custom') {
+  static async showManualEntryDialog(defaultType = 'custom', classContext = null) {
     // Permission check: only GM can add to 'missing' section
     if (defaultType === 'missing' && !game.user.isGM) {
       ui.notifications.error('Only the GM can add missing official archetypes.');
       return null;
     }
 
-    const content = this._buildManualEntryHTML(defaultType);
+    // Build expanded feature list for the dropdown (if class context available)
+    let expandedFeatures = [];
+    if (classContext?.associations?.length > 0) {
+      const resolved = await CompendiumParser.resolveAssociations(classContext.associations);
+      expandedFeatures = ScalableFeatures.getExpandedFeatureList(resolved, classContext.className);
+    }
+
+    const content = this._buildManualEntryHTML(defaultType, expandedFeatures);
     let featureCount = 1; // starts with 1 row (index 0)
 
     return new Promise(resolve => {
@@ -1312,6 +1361,12 @@ export class UIManager {
         render: (html) => {
           const element = html[0] || html;
 
+          // Pre-fill class from context if available
+          if (classContext?.className) {
+            const classInput = element.querySelector('[name="archetype-class"]');
+            if (classInput) classInput.value = classContext.className.toLowerCase();
+          }
+
           // Add Feature button handler
           const addBtn = element.querySelector('.add-feature-btn');
           if (addBtn) {
@@ -1321,10 +1376,22 @@ export class UIManager {
               const newRow = document.createElement('div');
               newRow.className = 'feature-row';
               newRow.dataset.index = idx;
+              // Build replaces field: dropdown if features available, text input otherwise
+              const replacesField = expandedFeatures.length > 0
+                ? `<select name="feat-replaces-${idx}" style="flex:2">
+                    <option value="">-- None (Additive) --</option>
+                    ${expandedFeatures.map(f => {
+                      const val = f._isSeriesHeader ? `series:${f._baseName}` : f._isTier ? `tier:${f._baseName}:${f._tier}` : f.resolvedName || f.uuid;
+                      const label = f.displayName || f.resolvedName || f.uuid;
+                      return `<option value="${val}" ${f._isSeriesHeader ? 'style="font-weight:bold;"' : ''}>${label}</option>`;
+                    }).join('')}
+                  </select>`
+                : `<input type="text" name="feat-replaces-${idx}" placeholder="Replaces (or blank)" style="flex:2" />`;
+
               newRow.innerHTML = `
                 <input type="text" name="feat-name-${idx}" placeholder="Feature name" style="flex:2" />
                 <input type="number" name="feat-level-${idx}" placeholder="Lvl" min="1" max="20" style="flex:0 0 50px; text-align:center" />
-                <input type="text" name="feat-replaces-${idx}" placeholder="Replaces (or blank)" style="flex:2" />
+                ${replacesField}
                 <button type="button" class="remove-feature-btn" data-index="${idx}" title="Remove" style="flex:0 0 30px; cursor:pointer;">✕</button>
               `;
               rowsContainer.appendChild(newRow);

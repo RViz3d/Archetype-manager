@@ -275,8 +275,9 @@ export class Applicator {
 
     for (const entry of diff) {
       if (entry.status === 'unchanged') {
-        // Strip resolvedName and other computed fields - only store uuid/id and level
-        const { resolvedName, ...cleanOriginal } = entry.original;
+        // Strip computed fields - only store uuid/id and level
+        // For split tier entries, keep the original UUID at the tier-specific level
+        const { resolvedName, _isSplitTier, _originalUuid, _tier, _baseName, ...cleanOriginal } = entry.original;
         associations.push(cleanOriginal);
       } else if (entry.status === 'added' || entry.status === 'modified') {
         // Use the archetype feature's own UUID, NOT the matched base feature UUID
