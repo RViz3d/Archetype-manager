@@ -2295,3 +2295,29 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
 - test/test-feature-110.mjs: New test suite (34 tests)
 
 **Current Status:** 104/110 features passing
+
+### Session (2025-02-12) - Feature #105
+
+**Accomplished:**
+- Feature #105 (Token HUD button for Archetype Manager): PASSED
+  - Section 1: Hook registration (2 tests)
+  - Section 2: Button injection for tokens with class items (6 tests)
+  - Section 3: Button NOT injected for tokens without class items (3 tests)
+  - Section 4: Click handler opens Archetype Manager (2 tests)
+  - Section 5: Duplicate injection prevention (2 tests)
+  - Section 6: Multi-class actor (1 test)
+  - Section 7: Styling matches FoundryVTT token HUD (3 tests)
+  - Section 8: Edge cases (4 tests)
+  - Section 9: Source code verification (5 tests)
+  - Section 10: Different actors on different HUDs (2 tests)
+  - 30/30 tests passing (test/test-feature-105.mjs)
+
+**Code Changes:**
+- scripts/module.mjs: Added Hooks.on('renderTokenHUD', ...) with class items check, control-icon button in .col.right, click handler calling ArchetypeManager.open(actor)
+- test/test-feature-105.mjs: New test suite (30 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- Existing test suites pass (zero regressions): Feature #102: 29/29, Feature #99: 28/28, Feature #110: 34/34
+
+**Current Status:** 106/110 features passing
