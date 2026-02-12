@@ -307,6 +307,7 @@ export function setupMockEnvironment() {
   settings.register('archetype-manager', 'autoCreateJEDB', { default: true });
   settings.register('archetype-manager', 'chatNotifications', { default: true });
   settings.register('archetype-manager', 'defaultCompendiumSource', { default: 'pf1e-archetypes' });
+  settings.register('archetype-manager', 'entryPointLocation', { default: 'both' });
   settings.register('archetype-manager', 'debugLogging', { default: false });
 
   // foundry utils

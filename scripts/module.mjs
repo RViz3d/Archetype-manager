@@ -68,6 +68,20 @@ Hooks.once('init', () => {
     default: 'pf1e-archetypes'
   });
 
+  game.settings.register(MODULE_ID, 'entryPointLocation', {
+    name: 'Entry Point Location',
+    hint: 'Choose where the Archetype Manager button appears. "Actor Sheet Only" places it on character sheets, "Token HUD Only" places it on token right-click menus, and "Both" places it in both locations.',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: 'both',
+    choices: {
+      'actor-sheet': 'Actor Sheet Only',
+      'token-hud': 'Token HUD Only',
+      'both': 'Both Actor Sheet and Token HUD'
+    }
+  });
+
   game.settings.register(MODULE_ID, 'debugLogging', {
     name: 'Debug Logging',
     hint: 'When enabled, verbose console output is displayed for troubleshooting. When disabled (default), informational console.log messages are suppressed — only warnings and errors remain active.',
@@ -111,6 +125,10 @@ Hooks.once('ready', async () => {
  * that have at least one class item. Clicking the button opens the Archetype Manager.
  */
 Hooks.on('renderActorSheet', (app, html, data) => {
+  // Check entryPointLocation setting — only inject if 'actor-sheet' or 'both'
+  const entryPointLocation = game.settings.get(MODULE_ID, 'entryPointLocation');
+  if (entryPointLocation !== 'actor-sheet' && entryPointLocation !== 'both') return;
+
   const actor = app.actor;
   if (!actor) return;
 
@@ -180,6 +198,10 @@ Hooks.on('renderActorSheet', (app, html, data) => {
  * The button icon and styling matches FoundryVTT's native token HUD design.
  */
 Hooks.on('renderTokenHUD', (hud, html, tokenData) => {
+  // Check entryPointLocation setting — only inject if 'token-hud' or 'both'
+  const entryPointLocation = game.settings.get(MODULE_ID, 'entryPointLocation');
+  if (entryPointLocation !== 'token-hud' && entryPointLocation !== 'both') return;
+
   const token = hud.object;
   if (!token) return;
 
