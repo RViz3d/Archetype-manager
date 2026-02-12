@@ -8555,15 +8555,21 @@
       "aerial-assaulter": {
         "name": "Aerial Assaulter",
         "touched": [
-          "12th-level bonus feat, armor mastery, weapon mastery",
-          "2nd-level bonus feat, armor mastery, weapon mastery",
+          "12th-level bonus feat",
+          "2nd-level bonus feat",
+          "armor mastery",
           "bravery",
-          "class skills"
+          "class skills",
+          "weapon mastery"
         ],
         "touchedRaw": [
           "Bravery",
-          "2nd-level Bonus Feat, Armor Mastery, Weapon Mastery",
-          "12th-level Bonus Feat, Armor Mastery, Weapon Mastery",
+          "2nd-level Bonus Feat",
+          "Armor Mastery",
+          "Weapon Mastery",
+          "12th-level Bonus Feat",
+          "Armor Mastery",
+          "Weapon Mastery",
           "Class Skills"
         ],
         "compatible": [
