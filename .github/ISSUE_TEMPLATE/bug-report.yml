@@ -1,0 +1,106 @@
+name: Bug Report
+description: Report a bug found during beta testing
+title: "[Bug]: "
+labels: ["beta", "bug"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "Minor — cosmetic or edge case"
+        - "Major — feature broken, workaround may exist"
+        - "Critical — crash, data corruption, or blocks usage"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - UI / Visual
+        - Archetype Application
+        - Archetype Removal
+        - Conflict Detection
+        - Compendium Parsing
+        - JournalEntry Database
+        - Settings
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly.
+      placeholder: When I clicked Apply on the Two-Handed Fighter archetype...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: The archetype should have been applied and classAssociations updated.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps to trigger the bug.
+      placeholder: |
+        1. Open character sheet for "Test Fighter"
+        2. Click the Archetypes header button
+        3. Select "Two-Handed Fighter"
+        4. Click Preview, then Apply
+    validations:
+      required: true
+
+  - type: textarea
+    id: console-errors
+    attributes:
+      label: Console errors (if any)
+      description: Open browser console (F12) and paste any red error messages.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag and drop screenshots here if helpful.
+
+  - type: input
+    id: foundry-version
+    attributes:
+      label: FoundryVTT version
+      placeholder: "13.350"
+    validations:
+      required: true
+
+  - type: input
+    id: pf1e-version
+    attributes:
+      label: PF1e system version
+      placeholder: "11.9"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: archetypes-module
+    attributes:
+      label: pf1e-archetypes module installed?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "Chrome 132 / Firefox 134 / etc."
