@@ -58,6 +58,13 @@ export class UIManager {
           <input type="text" name="archetype-search" class="archetype-search" placeholder="Search archetypes..." />
         </div>
 
+        <div class="filter-toolbar">
+          <label class="hide-incompatible-toggle">
+            <input type="checkbox" name="hide-incompatible" />
+            <span>Hide incompatible archetypes</span>
+          </label>
+        </div>
+
         <div class="archetype-list-container">
           <div class="loading-indicator" style="display: none;">
             <i class="fas fa-spinner fa-spin"></i>
@@ -392,6 +399,21 @@ export class UIManager {
             ? ConflictChecker.getIncompatibleArchetypes(conflictIndex, selectedArchetypes, applied, currentClassName)
             : new Map();
 
+          // Hide incompatible archetypes when toggle is checked
+          const hideIncompatEl = html[0]?.querySelector('[name="hide-incompatible"]');
+          if (hideIncompatEl?.checked) {
+            filtered = filtered.filter(arch => !incompatible.has(arch.slug));
+          }
+
+          if (filtered.length === 0) {
+            archetypeListEl.innerHTML = `<div class="empty-state">
+              ${searchTerm
+                ? `<i class="fas fa-search" style="margin-right:4px;"></i>No matching archetypes found.`
+                : (hideIncompatEl?.checked ? 'All archetypes are incompatible with the current selection' : 'No archetypes available for this class')}
+            </div>`;
+            return;
+          }
+
           archetypeListEl.innerHTML = filtered.map(arch => {
             const isApplied = applied.includes(arch.slug);
             const isSelected = selectedArchetypes.has(arch.slug);
@@ -493,14 +515,21 @@ export class UIManager {
           });
         }
 
+        const hideIncompatCheckbox = html[0].querySelector('[name="hide-incompatible"]');
+        if (hideIncompatCheckbox) {
+          hideIncompatCheckbox.addEventListener('change', () => {
+            renderArchetypeList();
+          });
+        }
+
         // Initial load for the selected class
         if (classItems.length > 0) {
           loadArchetypes();
         }
       }
     }, {
-      width: Math.min(500, (typeof window !== 'undefined' ? window.innerWidth : 1920) - 100),
-      height: 'auto',
+      width: Math.min(520, (typeof window !== 'undefined' ? window.innerWidth : 1920) - 100),
+      height: Math.min(680, (typeof window !== 'undefined' ? window.innerHeight : 1080) - 100),
       classes: ['archetype-manager-dialog'],
       resizable: true
     });
