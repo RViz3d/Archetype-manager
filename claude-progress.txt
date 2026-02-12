@@ -2112,3 +2112,33 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
   - Feature #99: 28/28, Features #1-2-3: 26/26
 
 **Current Status:** 101/110 features passing (101 passing, 110 total)
+
+### Session (2025-02-12) - Feature #102
+
+**Accomplished:**
+- Feature #102 (Refactor open() to accept optional actor parameter): PASSED
+  - Section 1: Method signature accepts optional actor parameter (4 tests)
+  - Section 2: Token-based fallback - backward compatible (5 tests)
+  - Section 3: Actor parameter mode - direct actor pass (4 tests)
+  - Section 4: Permission validation applies to both modes (4 tests)
+  - Section 5: API exposure passes through actor argument (5 tests)
+  - Section 6: Backward compatibility (open(undefined), open(null), open(false)) (4 tests)
+  - Section 7: Edge cases (actor+token coexistence, canvas.tokens undefined, Promise return) (3 tests)
+  - 29/29 tests passing (test/test-feature-102.mjs)
+
+**Code Changes:**
+- scripts/archetype-manager.mjs:
+  - open() now accepts optional actorParam
+  - When actorParam provided: skips canvas.tokens validation, uses actor directly
+  - When actorParam omitted/falsy: falls back to existing token-based behavior
+  - Permission and class item validation shared across both paths
+- scripts/module.mjs:
+  - API exposure updated: open: (actor) => ArchetypeManager.open(actor) to pass through actor arg
+- test/test-feature-102.mjs: New test suite (29 tests)
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites still pass (zero regressions):
+  - Feature #99: 28/28, Feature #100: 35/35
+
+**Current Status:** 101/110 features passing (approximately)
