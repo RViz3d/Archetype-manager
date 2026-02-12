@@ -270,7 +270,12 @@ export class ConflictChecker {
       const touched = new Set();
 
       // Priority 1: Try CompatibilityDB for pre-computed touched features
-      const dbTouched = CompatibilityDB.getTouched(className, archData.slug);
+      let dbTouched = null;
+      try {
+        dbTouched = CompatibilityDB.getTouched(className, archData.slug);
+      } catch (e) {
+        debugLog(`${MODULE_ID} | ConflictIndex: DB lookup failed for "${archData.slug}":`, e);
+      }
       if (dbTouched && dbTouched.length > 0) {
         for (const feature of dbTouched) {
           touched.add(feature);
@@ -350,14 +355,18 @@ export class ConflictChecker {
       // Fast path: Use DB pre-computed compatibility pairs
       if (useDb) {
         let dbIncompatible = false;
-        for (const activeSlug of activeSet) {
-          const compat = CompatibilityDB.areCompatible(className, activeSlug, slug);
-          if (compat === false) {
-            const displayName = activeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            incompatible.set(slug, `Incompatible with ${displayName} (DB)`);
-            dbIncompatible = true;
-            break;
+        try {
+          for (const activeSlug of activeSet) {
+            const compat = CompatibilityDB.areCompatible(className, activeSlug, slug);
+            if (compat === false) {
+              const displayName = activeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              incompatible.set(slug, `Incompatible with ${displayName} (DB)`);
+              dbIncompatible = true;
+              break;
+            }
           }
+        } catch (e) {
+          debugLog(`${MODULE_ID} | getIncompatibleArchetypes: DB pair check failed for "${slug}":`, e);
         }
         if (dbIncompatible) continue;
       }
