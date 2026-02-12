@@ -123,14 +123,30 @@ export class ConflictChecker {
    * @returns {object} { valid: boolean, conflicts: Array, conflictPairs: Array<[string,string]> }
    */
   static validateStacking(archetypeDataList, className) {
-    // Use DiffEngine for basic target conflicts
-    const result = DiffEngine.validateStack(archetypeDataList);
+    const allRawConflicts = [];
+    const useDb = className && CompatibilityDB.isLoaded();
 
-    // Add series-level conflicts
-    if (className) {
-      for (let i = 0; i < archetypeDataList.length; i++) {
-        for (let j = i + 1; j < archetypeDataList.length; j++) {
-          result.conflicts.push(
+    for (let i = 0; i < archetypeDataList.length; i++) {
+      for (let j = i + 1; j < archetypeDataList.length; j++) {
+        // Check DB first: if compatible, skip conflict detection for this pair
+        if (useDb) {
+          try {
+            const slugA = archetypeDataList[i].slug;
+            const slugB = archetypeDataList[j].slug;
+            if (slugA && slugB) {
+              const compat = CompatibilityDB.areCompatible(className, slugA, slugB);
+              if (compat === true) continue; // DB says compatible, skip pair
+            }
+          } catch (e) { /* fall through to conflict detection */ }
+        }
+
+        // DiffEngine direct-target conflicts
+        const conflicts = DiffEngine.detectConflicts(archetypeDataList[i], archetypeDataList[j]);
+        allRawConflicts.push(...conflicts);
+
+        // Series-level conflicts
+        if (className) {
+          allRawConflicts.push(
             ...this._checkSeriesConflicts(archetypeDataList[i], archetypeDataList[j], className)
           );
         }
@@ -138,7 +154,7 @@ export class ConflictChecker {
     }
 
     // Deduplicate
-    const allConflicts = this._deduplicateConflicts(result.conflicts);
+    const allConflicts = this._deduplicateConflicts(allRawConflicts);
     const conflictPairs = [];
     for (const conflict of allConflicts) {
       const pair = [conflict.archetypeA, conflict.archetypeB].sort();

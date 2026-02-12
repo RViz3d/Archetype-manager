@@ -2,7 +2,7 @@
   "id": "archetype-manager",
   "title": "PF1e Archetype Manager",
   "description": "Automates the application and removal of class archetypes for Pathfinder 1e by programmatically modifying classAssociations arrays on class items.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "authors": [
     {
       "name": "Archetype Manager Team"

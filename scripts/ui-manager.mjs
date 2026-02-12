@@ -111,7 +111,8 @@ export class UIManager {
 
             // Final stacking validation including applied
             const fullStack = [...dialogAppliedArchetypeDataList, ...selectedParsedList];
-            const validation = ConflictChecker.validateStacking(fullStack);
+            const validationClassName = dialogCurrentClassItem?.name || '';
+            const validation = ConflictChecker.validateStacking(fullStack, validationClassName);
             if (!validation.valid) {
               const conflictMsg = validation.conflicts.map(c => c.featureName).join(', ');
               ui.notifications.error(`${MODULE_TITLE} | Cannot apply: conflicts detected over ${conflictMsg}`);
