@@ -9,10 +9,11 @@
  * - Pre-computed conflict index for real-time UI feedback
  */
 
-import { MODULE_ID } from './module.mjs';
+import { MODULE_ID, debugLog } from './module.mjs';
 import { DiffEngine } from './diff-engine.mjs';
 import { CompendiumParser } from './compendium-parser.mjs';
 import { ScalableFeatures } from './scalable-features.mjs';
+import { CompatibilityDB } from './compatibility-db.mjs';
 
 export class ConflictChecker {
   /**
@@ -251,6 +252,8 @@ export class ConflictChecker {
    * Maps each archetype slug to the set of base feature series it touches.
    * Used for real-time incompatibility display in the selection UI.
    *
+   * Prefers CompatibilityDB data over regex scanning when available.
+   *
    * @param {Array} archetypeFeatures - All features from pf-arch-features pack (cached)
    * @param {Array} archetypeDataList - The filtered archetype list for the current class
    * @param {string} className - The class name
@@ -260,33 +263,42 @@ export class ConflictChecker {
     const index = new Map();
     const replaceRegex = /replaces?\s+(.+?)\./i;
     const modifyRegex = /modif(?:y|ies|ying)\s+(.+?)\./i;
+    let dbHits = 0;
+    let regexFallbacks = 0;
 
     for (const archData of archetypeDataList) {
       const touched = new Set();
 
-      // Extract short name from "Class (ArchetypeName)"
-      const shortNameMatch = archData.name.match(/\((.+?)\)\s*$/);
-      const shortName = shortNameMatch ? shortNameMatch[1].trim() : archData.name;
-
-      // Find features belonging to this archetype
-      const namePattern = `(${shortName})`;
-      const matchingFeatures = archetypeFeatures.filter(f =>
-        f.name && f.name.includes(namePattern)
-      );
-
-      for (const feature of matchingFeatures) {
-        const desc = feature.system?.description?.value || '';
-
-        // Extract targets from description
-        const replaceMatch = desc.match(replaceRegex);
-        const modifyMatch = desc.match(modifyRegex);
-        const target = replaceMatch?.[1]?.trim() || modifyMatch?.[1]?.trim();
-
-        if (target) {
-          // Check if target is part of a scalable feature series
-          const seriesBase = ScalableFeatures.getSeriesBaseName(target, className);
-          touched.add(seriesBase || CompendiumParser.normalizeName(target));
+      // Priority 1: Try CompatibilityDB for pre-computed touched features
+      const dbTouched = CompatibilityDB.getTouched(className, archData.slug);
+      if (dbTouched && dbTouched.length > 0) {
+        for (const feature of dbTouched) {
+          touched.add(feature);
         }
+        dbHits++;
+      } else {
+        // Priority 2: Fall back to regex scanning of pf-arch-features descriptions
+        const shortNameMatch = archData.name.match(/\((.+?)\)\s*$/);
+        const shortName = shortNameMatch ? shortNameMatch[1].trim() : archData.name;
+
+        const namePattern = `(${shortName})`;
+        const matchingFeatures = archetypeFeatures.filter(f =>
+          f.name && f.name.includes(namePattern)
+        );
+
+        for (const feature of matchingFeatures) {
+          const desc = feature.system?.description?.value || '';
+
+          const replaceMatch = desc.match(replaceRegex);
+          const modifyMatch = desc.match(modifyRegex);
+          const target = replaceMatch?.[1]?.trim() || modifyMatch?.[1]?.trim();
+
+          if (target) {
+            const seriesBase = ScalableFeatures.getSeriesBaseName(target, className);
+            touched.add(seriesBase || CompendiumParser.normalizeName(target));
+          }
+        }
+        if (touched.size > 0) regexFallbacks++;
       }
 
       if (touched.size > 0) {
@@ -294,6 +306,7 @@ export class ConflictChecker {
       }
     }
 
+    debugLog(`${MODULE_ID} | ConflictIndex: ${dbHits} from DB, ${regexFallbacks} from regex fallback, ${archetypeDataList.length - dbHits - regexFallbacks} unresolved`);
     return index;
   }
 
@@ -301,17 +314,22 @@ export class ConflictChecker {
    * Given a conflict index and a set of selected archetype slugs,
    * determine which other archetypes are incompatible.
    *
+   * Uses CompatibilityDB pre-computed pairs as a fast path when available,
+   * falling back to feature-intersection logic.
+   *
    * @param {Map<string, Set<string>>} conflictIndex - From buildConflictIndex()
    * @param {Set<string>} selectedSlugs - Currently selected archetype slugs
    * @param {Array<string>} appliedSlugs - Already applied archetype slugs
+   * @param {string} [className] - Class name for DB pair lookup
    * @returns {Map<string, string>} slug -> conflict reason (for graying out)
    */
-  static getIncompatibleArchetypes(conflictIndex, selectedSlugs, appliedSlugs = []) {
+  static getIncompatibleArchetypes(conflictIndex, selectedSlugs, appliedSlugs = [], className) {
     const incompatible = new Map();
+    const activeSet = new Set([...selectedSlugs, ...appliedSlugs]);
+    const useDb = className && CompatibilityDB.isLoaded();
 
     // Collect all touched features from selected + applied archetypes
     const activeTouched = new Map(); // feature -> archetype name that touches it
-    const activeSet = new Set([...selectedSlugs, ...appliedSlugs]);
 
     for (const slug of activeSet) {
       const touched = conflictIndex.get(slug);
@@ -324,16 +342,33 @@ export class ConflictChecker {
       }
     }
 
-    // Check each non-active archetype for conflicts
+    // Check each non-active archetype
     for (const [slug, touched] of conflictIndex) {
       if (activeSet.has(slug)) continue;
+      if (incompatible.has(slug)) continue;
 
+      // Fast path: Use DB pre-computed compatibility pairs
+      if (useDb) {
+        let dbIncompatible = false;
+        for (const activeSlug of activeSet) {
+          const compat = CompatibilityDB.areCompatible(className, activeSlug, slug);
+          if (compat === false) {
+            const displayName = activeSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            incompatible.set(slug, `Incompatible with ${displayName} (DB)`);
+            dbIncompatible = true;
+            break;
+          }
+        }
+        if (dbIncompatible) continue;
+      }
+
+      // Fallback: Feature-intersection logic
       for (const feature of touched) {
         if (activeTouched.has(feature)) {
           const conflictWith = activeTouched.get(feature);
           const displayFeature = feature.replace(/\b\w/g, l => l.toUpperCase());
           incompatible.set(slug, `Conflicts with ${conflictWith} over ${displayFeature}`);
-          break; // One conflict reason is enough
+          break;
         }
       }
     }

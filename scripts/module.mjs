@@ -11,6 +11,7 @@ import { CompendiumParser } from './compendium-parser.mjs';
 import { DiffEngine } from './diff-engine.mjs';
 import { Applicator } from './applicator.mjs';
 import { UIManager } from './ui-manager.mjs';
+import { CompatibilityDB } from './compatibility-db.mjs';
 
 const MODULE_ID = 'archetype-manager';
 const MODULE_TITLE = 'PF1e Archetype Manager';
@@ -92,6 +93,9 @@ Hooks.once('ready', async () => {
   } else {
     debugLog(`${MODULE_TITLE} | Auto-create JournalEntry database is disabled, skipping database creation`);
   }
+
+  // Preload CompatibilityDB (non-blocking, graceful fallback)
+  CompatibilityDB.load().catch(e => debugLog(`${MODULE_TITLE} | CompatibilityDB not available:`, e));
 
   // Make the module API available globally for macro access
   game.modules.get(MODULE_ID).api = {

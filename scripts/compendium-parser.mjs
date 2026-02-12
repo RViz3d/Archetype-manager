@@ -12,6 +12,7 @@
 
 import { MODULE_ID, debugLog } from './module.mjs';
 import { JournalEntryDB } from './journal-db.mjs';
+import { CompatibilityDB } from './compatibility-db.mjs';
 
 export class CompendiumParser {
   // Regex patterns for parsing archetype feature descriptions
@@ -242,13 +243,15 @@ export class CompendiumParser {
   }
 
   /**
-   * Parse a full archetype, merging JE fixes over auto-parse results
+   * Parse a full archetype, merging JE fixes over auto-parse results.
+   * Priority chain: JE fixes > CompatibilityDB > Regex auto-parse > User prompt
    * @param {object} archetype - The archetype document
    * @param {Array} features - The archetype's features
    * @param {Array} baseAssociations - The base class classAssociations
+   * @param {string} [className] - Class name for CompatibilityDB lookup
    * @returns {object} Parsed archetype data with all features classified
    */
-  static async parseArchetype(archetype, features, baseAssociations) {
+  static async parseArchetype(archetype, features, baseAssociations, className) {
     const slug = archetype.name.slugify();
     const source = this.getCompendiumSource();
 
@@ -263,11 +266,20 @@ export class CompendiumParser {
 
     const resolvedAssociations = await this.resolveAssociations(baseAssociations);
 
+    // Load CompatibilityDB touchedRaw for this archetype (if available)
+    const dbTouchedRaw = className
+      ? CompatibilityDB.getTouchedRaw(className, slug)
+      : null;
+
+    if (dbTouchedRaw) {
+      debugLog(`${MODULE_ID} | CompatibilityDB: "${archetype.name}" touches [${dbTouchedRaw.join(', ')}]`);
+    }
+
     for (const feature of features) {
       const desc = feature.system?.description?.value || '';
       const featureSlug = feature.name.slugify();
 
-      // Check JE fix for this specific feature
+      // Priority 1: JE fix for this specific feature
       if (jeFix?.features?.[featureSlug]) {
         parsed.features.push({
           name: feature.name,
@@ -278,14 +290,26 @@ export class CompendiumParser {
         continue;
       }
 
-      // Auto-parse
+      // Priority 2+3: Regex auto-parse, then CompatibilityDB reclassification
       const level = this.parseLevel(desc);
-      const classification = this.classifyFeature(desc);
+      let classification = this.classifyFeature(desc);
+
+      // Priority 2: If regex missed (additive/unknown) but DB knows this archetype touches
+      // base features, try to match the feature name against touchedRaw entries
+      if (dbTouchedRaw && (classification.type === 'additive' || classification.type === 'unknown')) {
+        const dbTarget = this._matchFeatureToDbTouched(feature.name, archetype.name, dbTouchedRaw);
+        if (dbTarget) {
+          debugLog(`${MODULE_ID} | CompatibilityDB reclassified "${feature.name}" as replacement of "${dbTarget}"`);
+          classification = { type: 'replacement', target: dbTarget };
+        }
+      }
 
       let matchedAssociation = null;
       if (classification.target) {
         matchedAssociation = this.matchTarget(classification.target, resolvedAssociations);
       }
+
+      const featureSource = (dbTouchedRaw && classification.target) ? 'db-assisted' : 'auto-parse';
 
       parsed.features.push({
         name: feature.name,
@@ -295,13 +319,53 @@ export class CompendiumParser {
         matchedAssociation,
         uuid: feature.uuid || `Compendium.${source}.pf-arch-features.Item.${feature.id}`,
         description: desc,
-        source: 'auto-parse',
+        source: featureSource,
         needsUserInput: classification.type === 'unknown' ||
           (classification.type === 'replacement' && !matchedAssociation)
       });
     }
 
     return parsed;
+  }
+
+  /**
+   * Try to match an archetype feature name against the DB's touchedRaw list.
+   * Strips the archetype short name from the feature name before matching.
+   *
+   * Example: Feature "Tribal Weapon Training (Tribal Fighter)" with touchedRaw
+   * ["Weapon Training 1", ...] → matches "Weapon Training" series.
+   *
+   * @param {string} featureName - Full feature name (may include archetype in parens)
+   * @param {string} archetypeName - Full archetype name like "Fighter (Tribal Fighter)"
+   * @param {string[]} touchedRaw - Raw feature names from DB
+   * @returns {string|null} The matched base feature name, or null
+   * @private
+   */
+  static _matchFeatureToDbTouched(featureName, archetypeName, touchedRaw) {
+    // Strip parenthetical (archetype name) from feature name
+    // "Tribal Weapon Training (Tribal Fighter)" → "Tribal Weapon Training"
+    const cleanName = featureName.replace(/\s*\(.*?\)\s*$/, '').trim();
+
+    // Normalize for comparison
+    const normalizedClean = this.normalizeName(cleanName);
+
+    for (const rawTarget of touchedRaw) {
+      const normalizedTarget = this.normalizeName(rawTarget);
+      if (!normalizedTarget) continue;
+
+      // Check if the DB target name is contained within the feature name
+      // e.g., "tribal weapon training" contains "weapon training"
+      if (normalizedClean.includes(normalizedTarget)) {
+        return rawTarget;
+      }
+
+      // Check if normalized forms match
+      if (normalizedClean === normalizedTarget) {
+        return rawTarget;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -325,8 +389,8 @@ export class CompendiumParser {
    * @returns {object} Parsed archetype data with all features resolved where possible
    */
   static async parseArchetypeWithPrompts(archetype, features, baseAssociations, options = {}) {
-    const parsed = await this.parseArchetype(archetype, features, baseAssociations);
     const { promptCallback, className } = options;
+    const parsed = await this.parseArchetype(archetype, features, baseAssociations, className);
 
     if (!promptCallback) return parsed;
 
