@@ -2190,3 +2190,77 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
   - Features #1-2-3: 26/26
 
 **Current Status:** 103/110 features passing
+
+### Session (2025-02-12) - Feature #109
+
+**Accomplished:**
+- Feature #109 (Register default compendium source setting): PASSED
+  - Section 1: Setting registration in init hook (8 tests)
+    - defaultCompendiumSource registered with type String, default 'pf1e-archetypes', scope 'world', config true
+    - Descriptive name ('Default Compendium Source') and hint explaining it's the module ID for archetype data packs
+    - Default value returned via game.settings.get
+  - Section 2: getCompendiumSource() helper method (3 tests)
+    - Returns default 'pf1e-archetypes', returns updated value after setting change
+    - Falls back to 'pf1e-archetypes' on empty string
+  - Section 3: isModuleAvailable uses setting value (4 tests)
+    - Checks default source module, returns true when active
+    - Checks custom source module when setting changed
+    - Returns false for inactive custom source module
+  - Section 4: loadArchetypeList uses setting for pack key (4 tests)
+    - Uses default pack key pf1e-archetypes.pf-archetypes
+    - Uses custom pack key when setting changed (e.g., my-custom-mod.pf-archetypes)
+    - Returns empty when custom module not available
+    - Error message includes custom source module name
+  - Section 5: loadArchetypeFeatures uses setting for pack key (3 tests)
+    - Uses default pack key pf1e-archetypes.pf-arch-features
+    - Uses custom pack key when setting changed
+    - Returns empty when custom module not available
+  - Section 6: parseArchetype uses setting for UUID construction (3 tests)
+    - Constructs UUID with default source (Compendium.pf1e-archetypes.pf-arch-features.Item.X)
+    - Constructs UUID with custom source (Compendium.my-homebrew.pf-arch-features.Item.X)
+    - Uses pre-existing feature.uuid if available (overrides construction)
+  - Section 7: Default value backwards compatibility (1 test)
+    - With default value, parser loads from pf1e-archetypes packs as before
+  - Section 8: Changing setting to different module ID (2 tests)
+    - Changing setting causes parser to look for packs from that module
+    - Switching back to default restores normal behavior
+  - Section 9: Setting coexists with other settings (3 tests)
+    - Coexists with lastSelectedClass, showParseWarnings, autoCreateJEDB, chatNotifications
+    - Module registers at least 5 settings after init
+    - Changing defaultCompendiumSource does not affect other settings
+  - Section 10: Source code verification (5 tests)
+    - module.mjs contains defaultCompendiumSource registration
+    - compendium-parser.mjs uses getCompendiumSource method
+    - No hardcoded pf1e-archetypes in pack keys, game.modules.get, or UUID construction
+  - Section 11: Edge cases (5 tests)
+    - Setting value with hyphens, underscores, periods all work
+    - Multiple setting changes in sequence work correctly
+  - 41/41 tests passing (test/test-feature-109.mjs)
+
+**Code Changes:**
+- scripts/module.mjs:
+  - Added defaultCompendiumSource setting registration (String, default 'pf1e-archetypes', world, config: true)
+- scripts/compendium-parser.mjs:
+  - Added getCompendiumSource() static method with fallback to 'pf1e-archetypes'
+  - Replaced all hardcoded 'pf1e-archetypes' in isModuleAvailable(), loadArchetypeList(), loadArchetypeFeatures()
+  - Updated pack keys to use template literals: `${source}.pf-archetypes` and `${source}.pf-arch-features`
+  - Updated UUID construction in parseArchetype() to use `Compendium.${source}.pf-arch-features.Item.${id}`
+  - Error messages now include the custom source module name
+- scripts/ui-manager.mjs:
+  - Updated flags access to use `arch.flags?.[compendiumSource]?.class` instead of hardcoded 'pf1e-archetypes'
+- test/foundry-mock.mjs:
+  - Added debugLogging setting to pre-registered settings
+- test/test-feature-99.mjs:
+  - Fixed settings count assertion to be resilient to additional settings
+- test/test-feature-107.mjs:
+  - Fixed settings count assertion to check at least 3 settings instead of exactly 3
+- test/test-feature-109.mjs: New test suite (41 tests) - Default compendium source setting
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- Existing test suites pass (zero regressions):
+  - Feature #98: 40/40, Feature #99: 28/28
+  - Feature #100: 35/35, Feature #102: 29/29
+  - Feature #107: 29/29, Feature #92: 35/35
+
+**Current Status:** 104/110 features passing (approximately)
