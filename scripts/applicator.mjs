@@ -277,9 +277,11 @@ export class Applicator {
       if (entry.status === 'unchanged') {
         associations.push(entry.original);
       } else if (entry.status === 'added' || entry.status === 'modified') {
-        if (entry.archetypeFeature?.matchedAssociation) {
+        // Use the archetype feature's own UUID, NOT the matched base feature UUID
+        const archetypeUuid = entry.archetypeFeature?.uuid;
+        if (archetypeUuid) {
           associations.push({
-            ...entry.archetypeFeature.matchedAssociation,
+            uuid: archetypeUuid,
             level: entry.level
           });
         }
@@ -460,6 +462,9 @@ export class Applicator {
    * @private
    */
   static async _postApplyMessage(actor, classItem, parsedArchetype, diff) {
+    // Skip chat message if chatNotifications setting is disabled
+    if (!game.settings.get(MODULE_ID, 'chatNotifications')) return;
+
     const replaced = diff.filter(d => d.status === 'removed').map(d => d.name);
     const added = diff.filter(d => d.status === 'added').map(d => d.name);
     const modified = diff.filter(d => d.status === 'modified').map(d => d.name);
@@ -479,6 +484,9 @@ export class Applicator {
    * @private
    */
   static async _postRemoveMessage(actor, classItem, slug) {
+    // Skip chat message if chatNotifications setting is disabled
+    if (!game.settings.get(MODULE_ID, 'chatNotifications')) return;
+
     const content = `<h3>${MODULE_TITLE}</h3>` +
       `<p>Archetype <strong>${slug}</strong> removed from <strong>${actor.name}</strong>'s ${classItem.name}. ` +
       `Class features restored to original state.</p>`;

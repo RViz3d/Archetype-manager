@@ -50,6 +50,24 @@ Hooks.once('init', () => {
     default: true
   });
 
+  game.settings.register(MODULE_ID, 'chatNotifications', {
+    name: 'Chat Notifications',
+    hint: 'When enabled, chat messages are posted when archetypes are applied or removed. Disable to suppress chat messages while still performing archetype operations. Toast notifications are not affected by this setting.',
+    scope: 'world',
+    config: true,
+    type: Boolean,
+    default: true
+  });
+
+  game.settings.register(MODULE_ID, 'defaultCompendiumSource', {
+    name: 'Default Compendium Source',
+    hint: 'The module ID for the archetype data packs. This specifies which module\'s compendium packs to use as the primary archetype data source (e.g., the pf-archetypes and pf-arch-features packs). Change this if you use a different archetype compendium module.',
+    scope: 'world',
+    config: true,
+    type: String,
+    default: 'pf1e-archetypes'
+  });
+
   console.log(`${MODULE_TITLE} | Module initialized`);
 });
 
