@@ -2068,3 +2068,47 @@ All features complete! The PF1e Archetype Manager module is fully implemented wi
 - Accessibility (keyboard, tooltips, screen reader support)
 - Concurrency safety (double-click guards, per-actor locks)
 - Performance (loading indicators, startup timing, bounded operations)
+
+### Session (2025-02-12) - Feature #107
+
+**Accomplished:**
+- Feature #107 (Register auto-create JournalEntry DB setting): PASSED
+  - Section 1: Setting registration in init hook
+    - autoCreateJEDB registered with type Boolean, default true, scope 'world', config true
+    - Descriptive name and hint explaining behavior
+    - Default value returns true via game.settings.get
+  - Section 2: Setting enabled (default) - JE DB is created
+    - With autoCreateJEDB=true, ensureDatabase creates the JE on ready
+    - Created JE has correct name and all 3 pages
+  - Section 3: Setting disabled - JE DB is NOT created
+    - With autoCreateJEDB=false, no JE created on ready
+    - Module API still set up regardless
+    - Skip message logged when disabled
+  - Section 4: Setting toggling
+    - Can toggle between true and false at runtime
+    - Re-enabling and restarting creates DB on next ready
+  - Section 5: Source code verification
+    - module.mjs contains autoCreateJEDB registration with correct params
+    - Ready hook conditionally checks setting before ensureDatabase
+    - Else branch logs skip message
+  - Section 6: Integration with existing settings
+    - Coexists with lastSelectedClass and showParseWarnings
+    - Module registers exactly 3 settings after init
+  - Section 7: Edge cases
+    - Disabling setting does not delete existing JE DB
+    - Setting enabled is idempotent (no duplicate JEs)
+  - 29/29 tests passing (test/test-feature-107.mjs)
+
+**Code Changes:**
+- scripts/module.mjs:
+  - Added autoCreateJEDB setting registration in init hook (Boolean, default true, world, config: true)
+  - Wrapped ensureDatabase() in ready hook with conditional check on autoCreateJEDB setting
+  - Added log message when database creation is skipped (setting disabled)
+- test/test-feature-107.mjs: New test suite (29 tests) - Auto-create JE DB setting
+
+**Verification:**
+- No mock data patterns in production code (scripts/)
+- All existing test suites pass (zero regressions):
+  - Feature #99: 28/28, Features #1-2-3: 26/26
+
+**Current Status:** 101/110 features passing (101 passing, 110 total)
