@@ -1,14 +1,13 @@
 /**
- * Test Suite for Feature #103: Actor sheet button injection via renderActorSheet hook
+ * Test Suite for Feature #103: Actor sheet header button via getActorSheetHeaderButtons hook
  *
  * Verifies that:
- * 1. A Hooks.on('renderActorSheet', ...) listener is registered in module.mjs
- * 2. The hook checks that the actor is a character type with class items before injecting
- * 3. An 'Archetypes' button is injected into the character sheet HTML
- * 4. The button is styled consistently with FoundryVTT's native buttons
+ * 1. A Hooks.on('getActorSheetHeaderButtons', ...) listener is registered in module.mjs
+ * 2. The hook checks that the actor has class items before adding the button
+ * 3. A header button config object is added to the buttons array
+ * 4. The button config has the correct class, icon, label, and onclick
  * 5. The button does NOT appear on actors without class items
- * 6. The button CSS is defined in styles/archetype-manager.css
- * 7. No duplicate buttons on re-render
+ * 6. The CSS class is defined in styles/archetype-manager.css
  */
 
 import { setupMockEnvironment, createMockActor, createMockClassItem } from './foundry-mock.mjs';
@@ -54,7 +53,7 @@ async function asyncTest(name, fn) {
   }
 }
 
-console.log('\n=== Feature #103: Actor sheet button injection via renderActorSheet hook ===\n');
+console.log('\n=== Feature #103: Actor sheet header button via getActorSheetHeaderButtons hook ===\n');
 
 // Set up environment
 const env = setupMockEnvironment();
@@ -74,38 +73,11 @@ function createMockApp(actor) {
   };
 }
 
-// Helper: create a mock PF1e character sheet HTML structure
-function createMockSheetHTML(options = {}) {
-  const div = document.createElement('div');
-  div.classList.add('sheet', 'actor-sheet');
-
-  if (options.hasFeaturesTab !== false) {
-    const featuresTab = document.createElement('div');
-    featuresTab.classList.add('tab');
-    featuresTab.setAttribute('data-tab', 'features');
-
-    if (options.hasInventoryHeader !== false) {
-      const invHeader = document.createElement('div');
-      invHeader.classList.add('inventory-header');
-      invHeader.textContent = 'Features';
-      featuresTab.appendChild(invHeader);
-    }
-
-    div.appendChild(featuresTab);
-  }
-
-  if (options.hasSheetBody !== false) {
-    const sheetBody = document.createElement('div');
-    sheetBody.classList.add('sheet-body');
-    div.appendChild(sheetBody);
-  }
-
-  return div;
-}
-
-// Helper: call the renderActorSheet hooks
-async function triggerRenderActorSheet(app, html, data = {}) {
-  await Hooks.callAll('renderActorSheet', app, html, data);
+// Helper: call the getActorSheetHeaderButtons hook and return the buttons array
+async function getHeaderButtons(app) {
+  const buttons = [];
+  await Hooks.callAll('getActorSheetHeaderButtons', app, buttons);
+  return buttons;
 }
 
 // ===================================
@@ -113,109 +85,70 @@ async function triggerRenderActorSheet(app, html, data = {}) {
 // ===================================
 console.log('\n--- Section 1: Hook Registration ---');
 
-test('renderActorSheet hook is registered', () => {
-  const hooks = Hooks._hooks.get('renderActorSheet');
-  assert(hooks, 'renderActorSheet hooks should be registered');
-  assert(hooks.length > 0, 'renderActorSheet should have at least one listener');
+test('getActorSheetHeaderButtons hook is registered', () => {
+  const hooks = Hooks._hooks.get('getActorSheetHeaderButtons');
+  assert(hooks, 'getActorSheetHeaderButtons hooks should be registered');
+  assert(hooks.length > 0, 'getActorSheetHeaderButtons should have at least one listener');
 });
 
-test('renderActorSheet hook is a function', () => {
-  const hooks = Hooks._hooks.get('renderActorSheet');
-  assert(typeof hooks[0] === 'function', 'renderActorSheet hook should be a function');
+test('getActorSheetHeaderButtons hook is a function', () => {
+  const hooks = Hooks._hooks.get('getActorSheetHeaderButtons');
+  assert(typeof hooks[0] === 'function', 'getActorSheetHeaderButtons hook should be a function');
 });
 
 // ===================================
-// Section 2: Button injection on character with class items
+// Section 2: Header button added for character with class items
 // ===================================
-console.log('\n--- Section 2: Button injection on character with class items ---');
+console.log('\n--- Section 2: Header button added for character with class items ---');
 
-await asyncTest('Archetypes button is injected on character with class items', async () => {
+await asyncTest('Header button is added when actor has class items', async () => {
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
   const actor = createMockActor('Test Fighter', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Archetypes button should be injected into the sheet');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 1, 'Should have exactly one header button');
 });
 
-await asyncTest('Button text contains "Archetypes"', async () => {
+await asyncTest('Button config has correct class name', async () => {
   const classItem = createMockClassItem('Wizard', 3, 'wizard');
   const actor = createMockActor('Test Wizard', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-  assert(btn.textContent.includes('Archetypes'), `Button text should contain "Archetypes", got "${btn.textContent}"`);
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons[0].class, 'archetype-manager-header-btn', 'Button class should be archetype-manager-header-btn');
 });
 
-await asyncTest('Button has an icon (fas fa-hat-wizard)', async () => {
+await asyncTest('Button config has hat-wizard icon', async () => {
   const classItem = createMockClassItem('Rogue', 4, 'rogue');
   const actor = createMockActor('Test Rogue', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-  const icon = btn.querySelector('i.fa-hat-wizard');
-  assert(icon, 'Button should have a hat-wizard icon');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons[0].icon, 'fas fa-hat-wizard', 'Button icon should be fas fa-hat-wizard');
 });
 
-await asyncTest('Button has type="button" to prevent form submission', async () => {
+await asyncTest('Button config has label "Archetypes"', async () => {
   const classItem = createMockClassItem('Cleric', 2, 'cleric');
   const actor = createMockActor('Test Cleric', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-  assertEqual(btn.type, 'button', 'Button should have type="button"');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons[0].label, 'Archetypes', 'Button label should be "Archetypes"');
 });
 
-await asyncTest('Button has title attribute', async () => {
+await asyncTest('Button config has onclick function', async () => {
   const classItem = createMockClassItem('Bard', 6, 'bard');
   const actor = createMockActor('Test Bard', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-  assert(btn.title, 'Button should have a title attribute');
-  assert(btn.title.length > 0, 'Button title should not be empty');
-});
-
-await asyncTest('Button is injected inside the features tab area', async () => {
-  const classItem = createMockClassItem('Paladin', 7, 'paladin');
-  const actor = createMockActor('Test Paladin', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-
-  // Button should be inside the features tab or at least in the sheet
-  const featuresTab = html.querySelector('.tab[data-tab="features"]');
-  assert(featuresTab, 'Features tab should exist');
-  assert(featuresTab.contains(btn), 'Button should be inside the features tab area');
+  const buttons = await getHeaderButtons(app);
+  assert(typeof buttons[0].onclick === 'function', 'Button should have an onclick function');
 });
 
 await asyncTest('Button works with multi-class actor', async () => {
@@ -224,32 +157,26 @@ await asyncTest('Button works with multi-class actor', async () => {
   const actor = createMockActor('Multiclass', [fighter, rogue]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Archetypes button should be injected for multi-class actor');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 1, 'Should have exactly one header button for multi-class actor');
 });
 
 // ===================================
-// Section 3: Button NOT injected for actors without class items
+// Section 3: Button NOT added for actors without class items
 // ===================================
-console.log('\n--- Section 3: Button NOT injected for actors without class items ---');
+console.log('\n--- Section 3: Button NOT added for actors without class items ---');
 
-await asyncTest('Button NOT injected when actor has no class items', async () => {
+await asyncTest('No button when actor has no class items', async () => {
   const actor = createMockActor('No Classes', []);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'Archetypes button should NOT be injected when actor has no class items');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'Should have no header buttons when actor has no class items');
 });
 
-await asyncTest('Button NOT injected when actor has only non-class items', async () => {
+await asyncTest('No button when actor has only non-class items', async () => {
   const actor = createMockActor('No Classes', []);
   const fakeItems = [
     { type: 'feat', name: 'Power Attack' },
@@ -264,84 +191,37 @@ await asyncTest('Button NOT injected when actor has only non-class items', async
   };
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'Archetypes button should NOT be injected when actor has only non-class items');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'Should have no header buttons when actor has only non-class items');
 });
 
-await asyncTest('Button NOT injected when actor is null', async () => {
+await asyncTest('No button when actor is null', async () => {
   const app = { actor: null };
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'Archetypes button should NOT be injected when actor is null');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'Should have no header buttons when actor is null');
 });
 
-await asyncTest('Button NOT injected when app has no actor', async () => {
+await asyncTest('No button when app has no actor', async () => {
   const app = {};
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'Archetypes button should NOT be injected when app has no actor');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'Should have no header buttons when app has no actor');
 });
 
 // ===================================
-// Section 4: Duplicate prevention on re-render
+// Section 4: Button onclick handler
 // ===================================
-console.log('\n--- Section 4: Duplicate prevention on re-render ---');
+console.log('\n--- Section 4: Button onclick handler ---');
 
-await asyncTest('No duplicate button on re-render', async () => {
-  const classItem = createMockClassItem('Fighter', 5, 'fighter');
-  const actor = createMockActor('Fighter', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-  await triggerRenderActorSheet(app, html, {});
-
-  const buttons = html.querySelectorAll('.archetype-manager-sheet-btn');
-  assertEqual(buttons.length, 1, 'Should have exactly one button after re-render');
-});
-
-await asyncTest('No duplicate button on triple render', async () => {
-  const classItem = createMockClassItem('Wizard', 10, 'wizard');
-  const actor = createMockActor('Wizard', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-  await triggerRenderActorSheet(app, html, {});
-  await triggerRenderActorSheet(app, html, {});
-
-  const buttons = html.querySelectorAll('.archetype-manager-sheet-btn');
-  assertEqual(buttons.length, 1, 'Should have exactly one button after triple render');
-});
-
-// ===================================
-// Section 5: Button click handler
-// ===================================
-console.log('\n--- Section 5: Button click handler ---');
-
-await asyncTest('Button click calls ArchetypeManager.open with actor', async () => {
+await asyncTest('onclick calls ArchetypeManager.open with actor', async () => {
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
   const actor = createMockActor('Click Test', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let openCalledWith = null;
   const { ArchetypeManager } = await import('../scripts/archetype-manager.mjs');
@@ -349,19 +229,16 @@ await asyncTest('Button click calls ArchetypeManager.open with actor', async () 
   ArchetypeManager.open = async (actorArg) => { openCalledWith = actorArg; };
 
   try {
-    const clickEvent = new Event('click', { bubbles: true, cancelable: true });
-    btn.dispatchEvent(clickEvent);
+    await buttons[0].onclick();
 
-    await new Promise(r => setTimeout(r, 10));
-
-    assert(openCalledWith !== null, 'ArchetypeManager.open should be called on click');
+    assert(openCalledWith !== null, 'ArchetypeManager.open should be called on onclick');
     assertEqual(openCalledWith.name, 'Click Test', 'Should pass the correct actor to open()');
   } finally {
     ArchetypeManager.open = originalOpen;
   }
 });
 
-await asyncTest('Button click passes the specific actor, not a global ref', async () => {
+await asyncTest('onclick passes the specific actor via closure', async () => {
   const classItem1 = createMockClassItem('Fighter', 5, 'fighter');
   const actor1 = createMockActor('Actor One', [classItem1]);
   actor1.type = 'character';
@@ -370,11 +247,8 @@ await asyncTest('Button click passes the specific actor, not a global ref', asyn
   const actor2 = createMockActor('Actor Two', [classItem2]);
   actor2.type = 'character';
 
-  const html1 = createMockSheetHTML();
-  const html2 = createMockSheetHTML();
-
-  await triggerRenderActorSheet(createMockApp(actor1), html1, {});
-  await triggerRenderActorSheet(createMockApp(actor2), html2, {});
+  const buttons1 = await getHeaderButtons(createMockApp(actor1));
+  const buttons2 = await getHeaderButtons(createMockApp(actor2));
 
   const { ArchetypeManager } = await import('../scripts/archetype-manager.mjs');
   const originalOpen = ArchetypeManager.open;
@@ -382,10 +256,7 @@ await asyncTest('Button click passes the specific actor, not a global ref', asyn
   ArchetypeManager.open = async (actorArg) => { openCalledWith = actorArg; };
 
   try {
-    const btn2 = html2.querySelector('.archetype-manager-sheet-btn');
-    assert(btn2, 'Button should exist on actor2 sheet');
-    btn2.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 10));
+    await buttons2[0].onclick();
 
     assert(openCalledWith !== null, 'open should be called');
     assertEqual(openCalledWith.name, 'Actor Two', 'Should pass actor2 to open()');
@@ -395,129 +266,82 @@ await asyncTest('Button click passes the specific actor, not a global ref', asyn
 });
 
 // ===================================
-// Section 6: Fallback insertion points
+// Section 5: Fresh buttons array each call (no duplicate accumulation)
 // ===================================
-console.log('\n--- Section 6: Fallback insertion points ---');
+console.log('\n--- Section 5: Fresh buttons array each call ---');
 
-await asyncTest('Button injected even without features tab (fallback to sheet-body)', async () => {
+await asyncTest('Each hook call with a fresh array produces exactly one button', async () => {
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
-  const actor = createMockActor('Fallback Test', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML({ hasFeaturesTab: false });
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should still be injected via sheet-body fallback');
-});
-
-await asyncTest('Button injected in sheet with only sheet-body (no features tab, no inventory header)', async () => {
-  const classItem = createMockClassItem('Monk', 4, 'monk');
-  const actor = createMockActor('Minimal Sheet', [classItem]);
+  const actor = createMockActor('Fresh Array Test', [classItem]);
   actor.type = 'character';
   const app = createMockApp(actor);
 
-  const html = document.createElement('div');
-  const sheetBody = document.createElement('div');
-  sheetBody.classList.add('sheet-body');
-  html.appendChild(sheetBody);
+  // Call twice with fresh arrays
+  const buttons1 = await getHeaderButtons(app);
+  const buttons2 = await getHeaderButtons(app);
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should be injected into sheet-body');
-  assert(sheetBody.contains(btn), 'Button should be inside sheet-body');
-});
-
-await asyncTest('Button injected in bare container (no matching selectors)', async () => {
-  const classItem = createMockClassItem('Barbarian', 8, 'barbarian');
-  const actor = createMockActor('Bare Container', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-
-  const html = document.createElement('div');
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should be appended to the container as last resort');
+  assertEqual(buttons1.length, 1, 'First call should produce one button');
+  assertEqual(buttons2.length, 1, 'Second call should also produce one button');
 });
 
 // ===================================
-// Section 7: CSS styling verification
+// Section 6: CSS styling verification
 // ===================================
-console.log('\n--- Section 7: CSS styling verification ---');
+console.log('\n--- Section 6: CSS styling verification ---');
 
 const cssContent = await readFile(new URL('../styles/archetype-manager.css', import.meta.url), 'utf-8');
 
-test('CSS file contains .archetype-manager-sheet-btn class', () => {
-  assert(cssContent.includes('.archetype-manager-sheet-btn'), 'CSS should contain .archetype-manager-sheet-btn');
+test('CSS file contains .archetype-manager-header-btn class', () => {
+  assert(cssContent.includes('.archetype-manager-header-btn'), 'CSS should contain .archetype-manager-header-btn');
 });
 
-test('CSS button has padding defined', () => {
-  assert(cssContent.includes('padding'), 'CSS for button should include padding');
+test('CSS file does NOT contain old .archetype-manager-sheet-btn class', () => {
+  assert(!cssContent.includes('.archetype-manager-sheet-btn'), 'CSS should NOT contain old .archetype-manager-sheet-btn');
 });
 
-test('CSS button has border defined', () => {
-  const btnSection = cssContent.substring(cssContent.indexOf('.archetype-manager-sheet-btn'));
-  assert(btnSection.includes('border'), 'CSS for button should include border styling');
-});
-
-test('CSS button has hover state', () => {
-  assert(cssContent.includes('.archetype-manager-sheet-btn:hover'), 'CSS should include hover state');
-});
-
-test('CSS button has focus state for accessibility', () => {
-  assert(cssContent.includes('.archetype-manager-sheet-btn:focus'), 'CSS should include focus state for accessibility');
-});
-
-test('CSS button uses FoundryVTT Signika font', () => {
-  const btnSection = cssContent.substring(cssContent.indexOf('.archetype-manager-sheet-btn'));
-  const nextClosingBrace = btnSection.indexOf('}');
-  const btnStyles = btnSection.substring(0, nextClosingBrace);
-  assert(btnStyles.includes('Signika'), 'Button CSS should use FoundryVTT Signika font family');
-});
-
-test('CSS button uses border-radius 3px (FoundryVTT standard)', () => {
-  const btnSection = cssContent.substring(cssContent.indexOf('.archetype-manager-sheet-btn'));
-  const nextClosingBrace = btnSection.indexOf('}');
-  const btnStyles = btnSection.substring(0, nextClosingBrace);
-  assert(btnStyles.includes('border-radius: 3px') || btnStyles.includes('border-radius:3px'), 'Button should use FoundryVTT standard 3px border-radius');
-});
-
-test('CSS button has cursor: pointer', () => {
-  const btnSection = cssContent.substring(cssContent.indexOf('.archetype-manager-sheet-btn'));
-  const nextClosingBrace = btnSection.indexOf('}');
-  const btnStyles = btnSection.substring(0, nextClosingBrace);
-  assert(btnStyles.includes('cursor: pointer') || btnStyles.includes('cursor:pointer'), 'Button should have cursor: pointer');
+test('CSS header button has hover state', () => {
+  assert(cssContent.includes('.archetype-manager-header-btn:hover'), 'CSS should include hover state');
 });
 
 // ===================================
-// Section 8: Source code verification
+// Section 7: Source code verification
 // ===================================
-console.log('\n--- Section 8: Source code verification ---');
+console.log('\n--- Section 7: Source code verification ---');
 
 const moduleSource = await readFile(new URL('../scripts/module.mjs', import.meta.url), 'utf-8');
 
-test('module.mjs contains Hooks.on("renderActorSheet")', () => {
+test('module.mjs contains Hooks.on("getActorSheetHeaderButtons")', () => {
   assert(
-    moduleSource.includes("Hooks.on('renderActorSheet'") || moduleSource.includes('Hooks.on("renderActorSheet"'),
-    'module.mjs should register renderActorSheet hook with Hooks.on'
+    moduleSource.includes("Hooks.on('getActorSheetHeaderButtons'") || moduleSource.includes('Hooks.on("getActorSheetHeaderButtons"'),
+    'module.mjs should register getActorSheetHeaderButtons hook with Hooks.on'
   );
 });
 
-test('Hook callback checks for class items', () => {
+test('module.mjs does NOT contain renderActorSheet hook', () => {
   assert(
-    moduleSource.includes("type === 'class'") || moduleSource.includes('type === "class"'),
-    'Hook callback should check for class item type'
+    !moduleSource.includes("Hooks.on('renderActorSheet'") && !moduleSource.includes('Hooks.on("renderActorSheet"'),
+    'module.mjs should NOT contain old renderActorSheet hook'
   );
 });
 
-test('Hook creates button element', () => {
+test('module.mjs does NOT contain renderTokenHUD hook', () => {
   assert(
-    moduleSource.includes('archetype-manager-sheet-btn'),
-    'Hook should create button with archetype-manager-sheet-btn class'
+    !moduleSource.includes("Hooks.on('renderTokenHUD'") && !moduleSource.includes('Hooks.on("renderTokenHUD"'),
+    'module.mjs should NOT contain renderTokenHUD hook'
+  );
+});
+
+test('Hook uses buttons.unshift to add button', () => {
+  assert(
+    moduleSource.includes('buttons.unshift'),
+    'Hook should use buttons.unshift to add the header button'
+  );
+});
+
+test('Hook creates button with archetype-manager-header-btn class', () => {
+  assert(
+    moduleSource.includes('archetype-manager-header-btn'),
+    'Hook should create button with archetype-manager-header-btn class'
   );
 });
 
@@ -528,90 +352,42 @@ test('Hook calls ArchetypeManager.open with actor', () => {
   );
 });
 
-test('Hook checks for duplicate before injection', () => {
+test('Hook checks for class items', () => {
   assert(
-    moduleSource.includes('archetype-manager-sheet-btn') && moduleSource.includes('querySelector'),
-    'Hook should check for existing button before injection to prevent duplicates'
+    moduleSource.includes("type === 'class'") || moduleSource.includes('type === "class"'),
+    'Hook callback should check for class item type'
   );
 });
 
 // ===================================
-// Section 9: Edge cases
+// Section 8: Edge cases
 // ===================================
-console.log('\n--- Section 9: Edge cases ---');
+console.log('\n--- Section 8: Edge cases ---');
 
 await asyncTest('Actor with type undefined but has class items gets button', async () => {
   const classItem = createMockClassItem('Sorcerer', 6, 'sorcerer');
   const actor = createMockActor('Typeless', [classItem]);
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Actor with class items should get button even without explicit type');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 1, 'Actor with class items should get header button even without explicit type');
 });
 
 await asyncTest('Actor with items.filter as undefined is handled gracefully', async () => {
   const actor = { name: 'Broken', type: 'character', items: null };
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'Should not inject button when items is null');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'Should not add button when items is null');
 });
-
-await asyncTest('jQuery-like html object is handled (jQuery wrapper)', async () => {
-  const classItem = createMockClassItem('Ranger', 5, 'ranger');
-  const actor = createMockActor('jQuery Test', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-
-  const rawHtml = createMockSheetHTML();
-  await triggerRenderActorSheet(app, rawHtml, {});
-
-  const btn = rawHtml.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should be injected with raw HTML element');
-});
-
-await asyncTest('Button injection with features tab h3 (no inventory-header)', async () => {
-  const classItem = createMockClassItem('Druid', 4, 'druid');
-  const actor = createMockActor('H3 Test', [classItem]);
-  actor.type = 'character';
-  const app = createMockApp(actor);
-
-  const html = document.createElement('div');
-  const featuresTab = document.createElement('div');
-  featuresTab.classList.add('tab');
-  featuresTab.setAttribute('data-tab', 'features');
-  const h3 = document.createElement('h3');
-  h3.textContent = 'Class Features';
-  featuresTab.appendChild(h3);
-  html.appendChild(featuresTab);
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should be injected even with h3 instead of inventory-header');
-});
-
-// ===================================
-// Section 10: Button does not appear for actors without class items (various scenarios)
-// ===================================
-console.log('\n--- Section 10: Various no-class-items scenarios ---');
 
 await asyncTest('Actor with empty items array gets no button', async () => {
   const actor = createMockActor('Empty Items', []);
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'No button for actor with empty items array');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'No button for actor with empty items array');
 });
 
 await asyncTest('Actor with only feats gets no button', async () => {
@@ -629,12 +405,9 @@ await asyncTest('Actor with only feats gets no button', async () => {
   };
   actor.type = 'character';
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(!btn, 'No button for actor with only feat-type items');
+  const buttons = await getHeaderButtons(app);
+  assertEqual(buttons.length, 0, 'No button for actor with only feat-type items');
 });
 
 // ===================================
