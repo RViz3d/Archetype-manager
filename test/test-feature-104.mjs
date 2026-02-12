@@ -1,10 +1,9 @@
 /**
- * Test Suite for Feature #104: Actor sheet button click opens Archetype Manager for that actor
+ * Test Suite for Feature #104: Actor sheet header button click opens Archetype Manager for that actor
  *
  * Verifies that:
- * 1. In the renderActorSheet hook, the click event listener on the Archetypes button
- *    retrieves the actor from app.actor and calls ArchetypeManager.open(actor)
- * 2. Clicking the button on a character sheet opens the Archetype Manager main dialog
+ * 1. The header button onclick callback calls ArchetypeManager.open(actor)
+ * 2. Clicking the button opens the Archetype Manager main dialog
  * 3. The dialog is pre-populated with the correct actor's class items
  * 4. The button works without needing a token selected on the canvas
  * 5. If the user lacks permission on the actor, an appropriate warning is shown
@@ -53,7 +52,7 @@ async function asyncTest(name, fn) {
   }
 }
 
-console.log('\n=== Feature #104: Actor sheet button click opens Archetype Manager for that actor ===\n');
+console.log('\n=== Feature #104: Actor sheet header button click opens Archetype Manager for that actor ===\n');
 
 // Set up environment
 const env = setupMockEnvironment();
@@ -77,68 +76,36 @@ function createMockApp(actor) {
   };
 }
 
-// Helper: create a mock PF1e character sheet HTML structure
-function createMockSheetHTML(options = {}) {
-  const div = document.createElement('div');
-  div.classList.add('sheet', 'actor-sheet');
-
-  if (options.hasFeaturesTab !== false) {
-    const featuresTab = document.createElement('div');
-    featuresTab.classList.add('tab');
-    featuresTab.setAttribute('data-tab', 'features');
-
-    if (options.hasInventoryHeader !== false) {
-      const invHeader = document.createElement('div');
-      invHeader.classList.add('inventory-header');
-      invHeader.textContent = 'Features';
-      featuresTab.appendChild(invHeader);
-    }
-
-    div.appendChild(featuresTab);
-  }
-
-  if (options.hasSheetBody !== false) {
-    const sheetBody = document.createElement('div');
-    sheetBody.classList.add('sheet-body');
-    div.appendChild(sheetBody);
-  }
-
-  return div;
-}
-
-// Helper: call the renderActorSheet hooks and return html
-async function triggerRenderActorSheet(app, html, data = {}) {
-  await Hooks.callAll('renderActorSheet', app, html, data);
-  return html;
+// Helper: call the getActorSheetHeaderButtons hook and return the buttons array
+async function getHeaderButtons(app) {
+  const buttons = [];
+  await Hooks.callAll('getActorSheetHeaderButtons', app, buttons);
+  return buttons;
 }
 
 // ===================================
-// Section 1: Click handler retrieves actor from sheet and calls ArchetypeManager.open(actor)
+// Section 1: onclick handler retrieves actor and calls ArchetypeManager.open(actor)
 // ===================================
-console.log('\n--- Section 1: Click handler retrieves actor from sheet and calls ArchetypeManager.open(actor) ---');
+console.log('\n--- Section 1: onclick handler retrieves actor and calls ArchetypeManager.open(actor) ---');
 
-await asyncTest('Click handler calls ArchetypeManager.open with the sheet actor', async () => {
+await asyncTest('onclick handler calls ArchetypeManager.open with the sheet actor', async () => {
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
   const actor = createMockActor('Sheet Fighter', [classItem]);
   actor.type = 'character';
   actor.isOwner = true;
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
+  assert(buttons.length > 0, 'Should have header button');
 
   let openCalledWith = null;
   const originalOpen = ArchetypeManager.open;
   ArchetypeManager.open = async (actorArg) => { openCalledWith = actorArg; };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 10));
+    await buttons[0].onclick();
 
-    assert(openCalledWith !== null, 'ArchetypeManager.open should be called on click');
+    assert(openCalledWith !== null, 'ArchetypeManager.open should be called on onclick');
     assertEqual(openCalledWith.name, 'Sheet Fighter', 'Should pass the sheet actor to open()');
     assertEqual(openCalledWith.id, actor.id, 'Should pass the exact same actor object (by id)');
   } finally {
@@ -146,7 +113,7 @@ await asyncTest('Click handler calls ArchetypeManager.open with the sheet actor'
   }
 });
 
-await asyncTest('Click handler passes the actor from app.actor, not a token actor', async () => {
+await asyncTest('onclick handler passes the actor from app.actor, not a token actor', async () => {
   const classItem = createMockClassItem('Wizard', 10, 'wizard');
   const actor = createMockActor('Sheet Wizard', [classItem]);
   actor.type = 'character';
@@ -159,20 +126,14 @@ await asyncTest('Click handler passes the actor from app.actor, not a token acto
   globalThis.canvas.tokens.controlled = [{ actor: tokenActor }];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let openCalledWith = null;
   const originalOpen = ArchetypeManager.open;
   ArchetypeManager.open = async (actorArg) => { openCalledWith = actorArg; };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 10));
+    await buttons[0].onclick();
 
     assert(openCalledWith !== null, 'ArchetypeManager.open should be called');
     assertEqual(openCalledWith.name, 'Sheet Wizard', 'Should pass the SHEET actor, not the token actor');
@@ -182,8 +143,8 @@ await asyncTest('Click handler passes the actor from app.actor, not a token acto
   }
 });
 
-await asyncTest('Click handler calls open with the actor closure, not a stale reference', async () => {
-  // Create two different sheets for two different actors
+await asyncTest('onclick handler calls open with the actor closure, not a stale reference', async () => {
+  // Create two different actors and get their header buttons
   const classItem1 = createMockClassItem('Fighter', 5, 'fighter');
   const actor1 = createMockActor('First Actor', [classItem1]);
   actor1.type = 'character';
@@ -194,57 +155,20 @@ await asyncTest('Click handler calls open with the actor closure, not a stale re
   actor2.type = 'character';
   actor2.isOwner = true;
 
-  const html1 = createMockSheetHTML();
-  const html2 = createMockSheetHTML();
-
-  await triggerRenderActorSheet(createMockApp(actor1), html1, {});
-  await triggerRenderActorSheet(createMockApp(actor2), html2, {});
+  const buttons1 = await getHeaderButtons(createMockApp(actor1));
+  const buttons2 = await getHeaderButtons(createMockApp(actor2));
 
   const calls = [];
   const originalOpen = ArchetypeManager.open;
   ArchetypeManager.open = async (actorArg) => { calls.push(actorArg); };
 
   try {
-    // Click button on first sheet
-    html1.querySelector('.archetype-manager-sheet-btn').dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 10));
-
-    // Click button on second sheet
-    html2.querySelector('.archetype-manager-sheet-btn').dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 10));
+    await buttons1[0].onclick();
+    await buttons2[0].onclick();
 
     assertEqual(calls.length, 2, 'Should have two calls to open');
-    assertEqual(calls[0].name, 'First Actor', 'First click should pass first actor');
-    assertEqual(calls[1].name, 'Second Actor', 'Second click should pass second actor');
-  } finally {
-    ArchetypeManager.open = originalOpen;
-  }
-});
-
-await asyncTest('Click event has preventDefault and stopPropagation called', async () => {
-  const classItem = createMockClassItem('Paladin', 7, 'paladin');
-  const actor = createMockActor('Paladin Hero', [classItem]);
-  actor.type = 'character';
-  actor.isOwner = true;
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
-
-  const originalOpen = ArchetypeManager.open;
-  ArchetypeManager.open = async () => {};
-
-  try {
-    const clickEvent = new Event('click', { bubbles: true, cancelable: true });
-    btn.dispatchEvent(clickEvent);
-    await new Promise(r => setTimeout(r, 10));
-
-    // The event should have been handled (we can check cancelable + defaultPrevented)
-    // Note: In jsdom, defaultPrevented reflects preventDefault() being called
-    assert(clickEvent.defaultPrevented === true, 'Click event should have preventDefault called');
+    assertEqual(calls[0].name, 'First Actor', 'First onclick should pass first actor');
+    assertEqual(calls[1].name, 'Second Actor', 'Second onclick should pass second actor');
   } finally {
     ArchetypeManager.open = originalOpen;
   }
@@ -255,7 +179,7 @@ await asyncTest('Click event has preventDefault and stopPropagation called', asy
 // ===================================
 console.log('\n--- Section 2: Clicking button opens the Archetype Manager main dialog ---');
 
-await asyncTest('Clicking button calls UIManager.showMainDialog', async () => {
+await asyncTest('onclick calls UIManager.showMainDialog', async () => {
   const classItem = createMockClassItem('Cleric', 6, 'cleric');
   const actor = createMockActor('Dialog Cleric', [classItem]);
   actor.type = 'character';
@@ -263,36 +187,29 @@ await asyncTest('Clicking button calls UIManager.showMainDialog', async () => {
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let showMainDialogCalled = false;
   let capturedActor = null;
-  let capturedClassItems = null;
   const origShowMainDialog = UIManager.showMainDialog;
   UIManager.showMainDialog = async (a, ci) => {
     showMainDialogCalled = true;
     capturedActor = a;
-    capturedClassItems = ci;
     return origShowMainDialog.call(UIManager, a, ci);
   };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
-    assert(showMainDialogCalled, 'UIManager.showMainDialog should be called after button click');
+    assert(showMainDialogCalled, 'UIManager.showMainDialog should be called after onclick');
     assertEqual(capturedActor.name, 'Dialog Cleric', 'Should pass the correct actor to showMainDialog');
   } finally {
     UIManager.showMainDialog = origShowMainDialog;
   }
 });
 
-await asyncTest('Dialog is created as a Dialog instance after button click', async () => {
+await asyncTest('Dialog is created as a Dialog instance after onclick', async () => {
   const classItem = createMockClassItem('Sorcerer', 4, 'sorcerer');
   const actor = createMockActor('Dialog Sorcerer', [classItem]);
   actor.type = 'character';
@@ -300,17 +217,12 @@ await asyncTest('Dialog is created as a Dialog instance after button click', asy
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   // Clear last dialog
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   assert(globalThis.Dialog._lastInstance !== null, 'A Dialog should have been created');
@@ -324,14 +236,10 @@ await asyncTest('Dialog contains the Archetype Manager UI content', async () => 
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
@@ -354,14 +262,10 @@ await asyncTest('Dialog class dropdown contains the actor\'s class name', async 
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
@@ -379,14 +283,10 @@ await asyncTest('Multi-class actor: dialog dropdown contains all classes', async
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
@@ -404,19 +304,14 @@ await asyncTest('Dialog class dropdown option values match class item IDs', asyn
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
   assert(dialog, 'Dialog should exist');
-  // The content should contain an option with the class item's ID as value
   assert(dialog.data.content.includes(`value="${classItem.id}"`), `Dialog dropdown should have option value matching class item ID "${classItem.id}"`);
 });
 
@@ -428,14 +323,10 @@ await asyncTest('Dialog class dropdown shows level for each class', async () => 
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
   globalThis.Dialog._lastInstance = null;
 
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
@@ -448,7 +339,7 @@ await asyncTest('Dialog class dropdown shows level for each class', async () => 
 // ===================================
 console.log('\n--- Section 4: Button works without needing a token selected on the canvas ---');
 
-await asyncTest('Button click works with no tokens selected on canvas', async () => {
+await asyncTest('onclick works with no tokens selected on canvas', async () => {
   globalThis.canvas.tokens.controlled = [];
 
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
@@ -457,12 +348,7 @@ await asyncTest('Button click works with no tokens selected on canvas', async ()
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
@@ -476,20 +362,19 @@ await asyncTest('Button click works with no tokens selected on canvas', async ()
   };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     assert(openCalled, 'open() should be called');
-    // No "select a token" warning should appear
     const tokenWarns = warnMessages.filter(m => m.includes('select a token'));
-    assertEqual(tokenWarns.length, 0, 'Should NOT show "select a token" warning when using sheet button');
+    assertEqual(tokenWarns.length, 0, 'Should NOT show "select a token" warning when using header button');
   } finally {
     ArchetypeManager.open = originalOpen;
     globalThis.ui.notifications.warn = origWarn;
   }
 });
 
-await asyncTest('Button click works even when canvas.tokens is undefined', async () => {
+await asyncTest('onclick works even when canvas.tokens is undefined', async () => {
   const origTokens = globalThis.canvas.tokens;
   globalThis.canvas.tokens = undefined;
 
@@ -499,12 +384,7 @@ await asyncTest('Button click works even when canvas.tokens is undefined', async
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
@@ -518,7 +398,7 @@ await asyncTest('Button click works even when canvas.tokens is undefined', async
   };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     assert(openCalledWithActor !== null, 'open() should be called with the actor');
@@ -532,7 +412,7 @@ await asyncTest('Button click works even when canvas.tokens is undefined', async
   }
 });
 
-await asyncTest('Button click bypasses token selection entirely — uses actor param path', async () => {
+await asyncTest('onclick bypasses token selection entirely — uses actor param path', async () => {
   globalThis.canvas.tokens.controlled = [];
 
   const classItem = createMockClassItem('Witch', 5, 'witch');
@@ -541,23 +421,17 @@ await asyncTest('Button click bypasses token selection entirely — uses actor p
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
 
   let capturedActor = null;
-  let capturedClassItems = null;
   const origShowMainDialog = UIManager.showMainDialog;
   UIManager.showMainDialog = async (a, ci) => {
     capturedActor = a;
-    capturedClassItems = ci;
     return origShowMainDialog.call(UIManager, a, ci);
   };
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     assert(capturedActor !== null, 'showMainDialog should be called with actor');
@@ -572,7 +446,7 @@ await asyncTest('Button click bypasses token selection entirely — uses actor p
 // ===================================
 console.log('\n--- Section 5: Permission check — user lacks permission shows warning ---');
 
-await asyncTest('Non-GM, non-owner click shows permission warning', async () => {
+await asyncTest('Non-GM, non-owner onclick shows permission warning', async () => {
   globalThis.game.user.isGM = false;
 
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
@@ -581,19 +455,15 @@ await asyncTest('Non-GM, non-owner click shows permission warning', async () => 
   actor.isOwner = false;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should still be injected (permission check is in open(), not in hook)');
+  const buttons = await getHeaderButtons(app);
+  assert(buttons.length > 0, 'Header button should still be added (permission check is in open(), not in hook)');
 
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
   globalThis.ui.notifications.warn = (msg) => warnMessages.push(msg);
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     assert(warnMessages.length > 0, 'Should show a permission warning');
@@ -610,22 +480,17 @@ await asyncTest('GM can click button on any actor sheet (even non-owned)', async
   const classItem = createMockClassItem('Cleric', 8, 'cleric');
   const actor = createMockActor('NPC Cleric', [classItem]);
   actor.type = 'character';
-  actor.isOwner = false; // not owned but GM can still manage
+  actor.isOwner = false;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
   globalThis.ui.notifications.warn = (msg) => warnMessages.push(msg);
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     const permWarns = warnMessages.filter(m => m.includes('permission'));
@@ -644,19 +509,14 @@ await asyncTest('Owner can click button on owned actor sheet', async () => {
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
 
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
   globalThis.ui.notifications.warn = (msg) => warnMessages.push(msg);
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     const permWarns = warnMessages.filter(m => m.includes('permission'));
@@ -676,11 +536,7 @@ await asyncTest('Permission denied: no dialog opened', async () => {
   actor.isOwner = false;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
 
   let showMainDialogCalled = false;
   const origShowMainDialog = UIManager.showMainDialog;
@@ -690,7 +546,7 @@ await asyncTest('Permission denied: no dialog opened', async () => {
   globalThis.ui.notifications.warn = () => {};
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     assertEqual(showMainDialogCalled, false, 'showMainDialog should NOT be called when permission denied');
@@ -708,48 +564,33 @@ console.log('\n--- Section 6: Source code verification ---');
 
 const moduleSource = await readFile(new URL('../scripts/module.mjs', import.meta.url), 'utf-8');
 
-test('renderActorSheet hook extracts actor from app.actor', () => {
-  // The hook should use app.actor (or equivalent like const actor = app.actor)
+test('getActorSheetHeaderButtons hook extracts actor from app.actor', () => {
   assert(
     moduleSource.includes('app.actor') || moduleSource.includes('app?.actor'),
     'Hook should extract actor from app.actor'
   );
 });
 
-test('Click handler calls ArchetypeManager.open(actor)', () => {
+test('onclick handler calls ArchetypeManager.open(actor)', () => {
   assert(
     moduleSource.includes('ArchetypeManager.open(actor'),
-    'Click handler should call ArchetypeManager.open with the actor'
+    'onclick handler should call ArchetypeManager.open with the actor'
   );
 });
 
-test('Click handler calls ev.preventDefault()', () => {
+test('Hook uses buttons.unshift to add button config', () => {
   assert(
-    moduleSource.includes('preventDefault()'),
-    'Click handler should call preventDefault() on the event'
-  );
-});
-
-test('Click handler calls ev.stopPropagation()', () => {
-  assert(
-    moduleSource.includes('stopPropagation()'),
-    'Click handler should call stopPropagation() on the event'
-  );
-});
-
-test('Button has addEventListener for click', () => {
-  assert(
-    moduleSource.includes("addEventListener('click'") || moduleSource.includes('addEventListener("click"'),
-    'Button should use addEventListener for click handling'
+    moduleSource.includes('buttons.unshift'),
+    'Hook should use buttons.unshift to add the header button'
   );
 });
 
 // ===================================
-// Section 7: End-to-end flow — button click → dialog open → correct actor
+// Section 7: End-to-end flow — header button onclick → dialog open → correct actor
 // ===================================
 console.log('\n--- Section 7: End-to-end flow ---');
 
-await asyncTest('Full E2E: inject button → click → dialog opens with correct actor and classes', async () => {
+await asyncTest('Full E2E: header button → onclick → dialog opens with correct actor and classes', async () => {
   globalThis.game.user.isGM = true;
   globalThis.canvas.tokens.controlled = [];
 
@@ -760,16 +601,14 @@ await asyncTest('Full E2E: inject button → click → dialog opens with correct
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
 
-  // Step 1: Inject button
-  await triggerRenderActorSheet(app, html, {});
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Step 1: Button should be injected');
+  // Step 1: Get header buttons
+  const buttons = await getHeaderButtons(app);
+  assert(buttons.length > 0, 'Step 1: Header button should be added');
 
-  // Step 2: Click button
+  // Step 2: Call onclick
   globalThis.Dialog._lastInstance = null;
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   // Step 3: Verify dialog opened
@@ -788,7 +627,7 @@ await asyncTest('Full E2E: inject button → click → dialog opens with correct
   assert(dialog.data.content.includes('Applied Archetypes'), 'Step 4: Dialog should have applied section');
 });
 
-await asyncTest('Full E2E: button click with no canvas tokens still opens dialog', async () => {
+await asyncTest('Full E2E: onclick with no canvas tokens still opens dialog', async () => {
   globalThis.canvas.tokens.controlled = [];
 
   const classItem = createMockClassItem('Magus', 3, 'magus');
@@ -797,11 +636,8 @@ await asyncTest('Full E2E: button click with no canvas tokens still opens dialog
   actor.isOwner = true;
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
+  const buttons = await getHeaderButtons(app);
 
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
   let warnMessages = [];
   const origWarn = globalThis.ui.notifications.warn;
   globalThis.ui.notifications.warn = (msg) => warnMessages.push(msg);
@@ -809,7 +645,7 @@ await asyncTest('Full E2E: button click with no canvas tokens still opens dialog
   globalThis.Dialog._lastInstance = null;
 
   try {
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 50));
 
     const dialog = globalThis.Dialog._lastInstance;
@@ -826,7 +662,7 @@ await asyncTest('Full E2E: button click with no canvas tokens still opens dialog
 // ===================================
 console.log('\n--- Section 8: Edge cases ---');
 
-await asyncTest('Multiple rapid clicks do not open multiple dialogs (single handler)', async () => {
+await asyncTest('Multiple onclick calls each invoke open', async () => {
   const classItem = createMockClassItem('Fighter', 5, 'fighter');
   const actor = createMockActor('Rapid Click Fighter', [classItem]);
   actor.type = 'character';
@@ -834,11 +670,7 @@ await asyncTest('Multiple rapid clicks do not open multiple dialogs (single hand
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
+  const buttons = await getHeaderButtons(app);
 
   let openCount = 0;
   const originalOpen = ArchetypeManager.open;
@@ -848,54 +680,18 @@ await asyncTest('Multiple rapid clicks do not open multiple dialogs (single hand
   };
 
   try {
-    // Fire 3 rapid clicks
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+    await buttons[0].onclick();
+    await buttons[0].onclick();
+    await buttons[0].onclick();
     await new Promise(r => setTimeout(r, 100));
 
-    // Each click should call open exactly once (3 clicks = 3 calls)
-    // The key point is each click calls open with the right actor, no duplicates from re-render
-    assertEqual(openCount, 3, 'Each click should invoke open() once (no stacking event handlers)');
+    assertEqual(openCount, 3, 'Each onclick should invoke open() once');
   } finally {
     ArchetypeManager.open = originalOpen;
   }
 });
 
-await asyncTest('Re-rendered sheet button still calls open with correct actor', async () => {
-  const classItem = createMockClassItem('Alchemist', 5, 'alchemist');
-  const actor = createMockActor('Rerender Alchemist', [classItem]);
-  actor.type = 'character';
-  actor.isOwner = true;
-  globalThis.canvas.tokens.controlled = [];
-
-  const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  // Render twice (duplicate prevention should skip second inject)
-  await triggerRenderActorSheet(app, html, {});
-  await triggerRenderActorSheet(app, html, {});
-
-  const btns = html.querySelectorAll('.archetype-manager-sheet-btn');
-  assertEqual(btns.length, 1, 'Should have exactly one button after re-render');
-
-  let openCalledWith = null;
-  const originalOpen = ArchetypeManager.open;
-  ArchetypeManager.open = async (actorArg) => { openCalledWith = actorArg; };
-
-  try {
-    btns[0].dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
-    await new Promise(r => setTimeout(r, 50));
-
-    assert(openCalledWith !== null, 'open() should be called');
-    assertEqual(openCalledWith.name, 'Rerender Alchemist', 'Should pass the correct actor');
-  } finally {
-    ArchetypeManager.open = originalOpen;
-  }
-});
-
-await asyncTest('Button click with actor whose class item has only system.levels (not level)', async () => {
-  // Some PF1e items may use 'levels' instead of 'level'
+await asyncTest('onclick with actor whose class item has only system.levels (not level)', async () => {
   const classItem = {
     id: 'test-levels-id',
     name: 'Gunslinger',
@@ -918,15 +714,11 @@ await asyncTest('Button click with actor whose class item has only system.levels
   globalThis.canvas.tokens.controlled = [];
 
   const app = createMockApp(actor);
-  const html = createMockSheetHTML();
-
-  await triggerRenderActorSheet(app, html, {});
-
-  const btn = html.querySelector('.archetype-manager-sheet-btn');
-  assert(btn, 'Button should exist');
+  const buttons = await getHeaderButtons(app);
+  assert(buttons.length > 0, 'Should have header button');
 
   globalThis.Dialog._lastInstance = null;
-  btn.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  await buttons[0].onclick();
   await new Promise(r => setTimeout(r, 50));
 
   const dialog = globalThis.Dialog._lastInstance;
@@ -939,42 +731,21 @@ await asyncTest('Button click with actor whose class item has only system.levels
 // ===================================
 console.log('\n--- Section 9: Primary entry point verification ---');
 
-test('The button is the primary user-facing entry point for the module', () => {
-  // Verify the renderActorSheet hook is set up (not just renderTokenHUD)
-  const actorSheetHooks = Hooks._hooks.get('renderActorSheet');
-  assert(actorSheetHooks && actorSheetHooks.length > 0, 'renderActorSheet hook should be registered for primary entry point');
+test('The header button is the primary user-facing entry point for the module', () => {
+  const headerHooks = Hooks._hooks.get('getActorSheetHeaderButtons');
+  assert(headerHooks && headerHooks.length > 0, 'getActorSheetHeaderButtons hook should be registered for primary entry point');
 });
 
-test('The click handler does not require any token to be selected', () => {
-  // Source code verification: the click handler passes actor directly
-  // It should call ArchetypeManager.open(actor), not ArchetypeManager.open() without args
-  const renderHookSection = moduleSource.substring(
-    moduleSource.indexOf("Hooks.on('renderActorSheet'"),
-    moduleSource.indexOf("Hooks.on('renderTokenHUD'") > -1
-      ? moduleSource.indexOf("Hooks.on('renderTokenHUD'")
-      : moduleSource.length
+test('The onclick handler does not require any token to be selected', () => {
+  // Source code verification: the onclick passes actor directly via closure
+  const hookSection = moduleSource.substring(
+    moduleSource.indexOf("getActorSheetHeaderButtons"),
+    moduleSource.length
   );
   assert(
-    renderHookSection.includes('ArchetypeManager.open(actor'),
-    'The actor sheet click handler should pass actor directly, not rely on token selection'
+    hookSection.includes('ArchetypeManager.open(actor'),
+    'The header button onclick should pass actor directly, not rely on token selection'
   );
-});
-
-await asyncTest('Actor sheet button is distinct from token HUD button', async () => {
-  const classItem = createMockClassItem('Fighter', 5, 'fighter');
-  const actor = createMockActor('Distinct Buttons', [classItem]);
-  actor.type = 'character';
-  actor.isOwner = true;
-
-  const sheetHtml = createMockSheetHTML();
-  await triggerRenderActorSheet(createMockApp(actor), sheetHtml, {});
-
-  const sheetBtn = sheetHtml.querySelector('.archetype-manager-sheet-btn');
-  assert(sheetBtn, 'Sheet button should exist');
-
-  // Token HUD button has different class
-  const tokenBtn = sheetHtml.querySelector('.archetype-manager-token-btn');
-  assert(!tokenBtn, 'Token HUD button should NOT be in actor sheet HTML');
 });
 
 // ===================================
