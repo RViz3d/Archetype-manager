@@ -16,12 +16,12 @@
   },
   {
     "name": "functional",
-    "color": "c2e0c6",
+    "color": "fef2c0",
     "description": "Logic/data issue"
   },
   {
     "name": "severity: critical",
-    "color": "ff0000",
+    "color": "b60205",
     "description": "Crash or data corruption"
   },
   {
